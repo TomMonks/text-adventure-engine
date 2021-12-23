@@ -1,0 +1,8 @@
+name: text_adv
+channels:
+  - conda-forge
+dependencies:
+  - pip=21.0.1
+  - python=3.8
+  - pip:
+    - rich==10.16.1
