@@ -404,6 +404,9 @@ class PlayerDeath(Command):
 
 
 class RemoveLinkToRoom(Command):
+    '''
+    Remove a link/exit from a room
+    '''
     def __init__(self, context, direction_to_remove):
         self.context = context
         self.direction_to_remove = direction_to_remove

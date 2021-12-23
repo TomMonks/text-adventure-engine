@@ -169,6 +169,7 @@ class RestrictedInventoryItemAction(InventoryItemAction):
     def _requirements_satisifed(self):
         return self.holder.in_inventory(self.requirements)
 
+
 ########################### Untested code #############################
 
 
