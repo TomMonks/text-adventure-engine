@@ -13,26 +13,27 @@ inventory
 Room: A location within the game that has a description and exits to other
 Rooms
 
-TextWorld: The main game class.  A player can take actions within a game 
+TextWorld: The main game class.  A player can take actions within a game
 
 '''
 
 from .constants import (
     CLASSIC_USE_ALIASES,
-    DEFAULT_CMD_WORDS, 
+    DEFAULT_CMD_WORDS,
     DEFAULT_LEGAL_MOVES,
     WARFARE_USE_ALIASES)
 
 from .commands import (
-    QuitGame, 
-    ExamineInventoryItem, 
-    LookAtRoom, 
-    MoveRoom, 
+    QuitGame,
+    ExamineInventoryItem,
+    LookAtRoom,
+    MoveRoom,
     TransferInventory,
-    UseInventoryItem, 
+    UseInventoryItem,
     ViewPlayerInventory)
 
-COMMAND_ERROR = "You cannot do that.";
+COMMAND_ERROR = "You cannot do that."
+
 
 class InventoryItem:
     '''
@@ -47,7 +48,7 @@ class InventoryItem:
         ------
         short_description: str
             Displayed when looking at a Room
-        
+
         fixed: bool, optional (default=False)
             Can the item be picked up or is it fixed in place in the room?
         '''
@@ -71,7 +72,6 @@ class InventoryItem:
         '''
         self.aliases.append(new_alias)
 
-
     def add_action(self, action):
         '''
         Add an action (a sequence of commands) to be executed given a specific
@@ -87,7 +87,7 @@ class InventoryItem:
     def __eq__(self, other):
         """
         Overrides the default implementation
-        Source: 
+        Source:
         -------
         https://stackoverflow.com/questions/390250/
         elegant-ways-to-support-equivalence-equality-in-python-classes
@@ -97,13 +97,14 @@ class InventoryItem:
         else:
             return False
 
+
 class InventoryHolder:
     '''
     Encapsulates the logic for adding and removing an InventoryItem
-    This simulates "picking up" and "dropping" items in a TextWorld 
+    This simulates "picking up" and "dropping" items in a TextWorld
     '''
     def __init__(self):
-        #inventory just held in a list interally
+        # inventory just held in a list interally
         self.inventory = []
 
     @property
@@ -146,14 +147,14 @@ class InventoryHolder:
             Raised when an InventoryItem without a matching alias.
         '''
         selected_item, selected_index = self.find_inventory(item_name)
-         
+
         # remove at index and return
         del self.inventory[selected_index]
         return selected_item
 
     def find_inventory(self, item_name):
         '''
-        Find an inventory item and return it and its index 
+        Find an inventory item and return it and its index
         in the collection.
         '''
         selected_item = None
@@ -163,9 +164,6 @@ class InventoryHolder:
                 selected_item = item
                 selected_index = index
                 break
-    
-        #if selected_item == None:
-        #    raise KeyError('You cannot do that.')  
 
         return selected_item, selected_index
 
@@ -176,8 +174,8 @@ class InventoryHolder:
 
         Params:
         ------
-        to_find: InventoryItem or List[InventoryItem] 
-        
+        to_find: InventoryItem or List[InventoryItem]
+
         Returns:
         --------
         bool
@@ -188,14 +186,14 @@ class InventoryHolder:
         else:
             required_count = 1
             to_find = [to_find]
-            
+
         for item in to_find:
             if item in self.inventory:
                 count += 1
 
             if required_count == count:
                 return True
-        
+
         return False
 
 
@@ -216,14 +214,13 @@ class Room(InventoryHolder):
 
     def __repr__(self):
         '''
-        String representation of the class 
+        String representation of the class
         '''
         desc = f"Room(name='{self.name}'"
         desc += f", description='{self.description[:20]}'"
         desc += f', n_exits={len(self.exits)}'
         desc += f', n_items={len(self.inventory)})'
         return desc
-                
 
     def add_exit(self, room, direction):
         '''
@@ -232,14 +229,23 @@ class Room(InventoryHolder):
         Params:
         ------
         room: Room
-            a Room object to link 
+            a Room object to link
 
         direction: str
             The str command to access the room
         '''
         self.exits[direction] = room
 
-    
+    def remove_exit(self, direction):
+        '''
+        Remove an exit in the specified direction
+
+        Params:
+        ------
+        direction: str
+        '''
+        self.exits.pop(direction, None)
+
     def exit(self, direction):
         '''
         Exit the room in the specified direction
@@ -288,7 +294,7 @@ class TextWorld(InventoryHolder):
             The index of the room where the player begins their adventure.
 
         legal_exits: None or List, optional (default=None)
-            List of exits (e.g. directions) that may be presented to a user 
+            List of exits (e.g. directions) that may be presented to a user
             during a game. If None then ['n', 's', 'e', 'w'].
 
         command_word_mapping: None or List, optional (default=None)
@@ -306,15 +312,15 @@ class TextWorld(InventoryHolder):
         self.name = name
         self.rooms = rooms
         self.current_room = self.rooms[start_index]
-        
-        # if None then get standard list 
+
+        # if None then get standard list
         if legal_exits is None:
             self.legal_exits = self.get_vanilla_legal_moves()
         else:
             self.legal_exits = legal_exits
-        
+
         # self.legal_commands = dict that maps str keywords (e.g. 'look')
-        # to functions that create command objects 
+        # to functions that create command objects
         # if none then get standard mapping dict
         if command_word_mapping is None:
             self.legal_commands = self.get_vanilla_command_word_mapping()
@@ -322,7 +328,7 @@ class TextWorld(InventoryHolder):
             # custom word mapping provided
             self.legal_commands = \
                     self.custom_command_word_mapping(command_word_mapping)
-        
+
         # aliaises for the use
         if use_aliases is None:
             self.use_aliases = ['use']
@@ -334,24 +340,24 @@ class TextWorld(InventoryHolder):
         else:
             # completely custom list
             self.use_aliases = use_aliases
-        
+
         # record how many actions taken in the game.
         self.n_actions = 0
-        
+
         # true while the game is active.
         self.active = True
 
-    
+
     def __repr__(self):
         '''
-        String representation of the class 
+        String representation of the class
         '''
         desc = f"TextWorld(name='{self.name}', "
         desc += f'n_rooms={len(self.rooms)}, '
         desc += f'legal_exits={self.legal_exits},\n'
         desc += f'\tlegal_commands={self.legal_commands},\n'
         desc += f'\tcurrent_room={self.current_room})'
-        return desc 
+        return desc
 
 
     def add_use_command_alias(self, alias):
@@ -384,10 +390,10 @@ class TextWorld(InventoryHolder):
         # split user input into list
         parsed_command = command.split()
         parsed_command[0] == parsed_command[0].lower()
-        
+
         # if attempting to use an item.
         if parsed_command[0] in self.use_aliases:
-            cmd = UseInventoryItem(self, parsed_command[1], 
+            cmd = UseInventoryItem(self, parsed_command[1],
                                           parsed_command[0])
             return cmd.execute()
 
@@ -400,7 +406,7 @@ class TextWorld(InventoryHolder):
 
         cmd = command_creator(parsed_command)
         return cmd.execute()
-       
+
     def _create_examine_command(self, *args):
         item_name = args[0][1]
         return ExamineInventoryItem(self, self.current_room, item_name)
@@ -434,7 +440,7 @@ class TextWorld(InventoryHolder):
 
     def _create_end_game_command(self, *args):
         return QuitGame(self)
-    
+
     def get_vanilla_command_word_mapping(self):
         '''
         Returns a dictionary of vanilla (default) command words
@@ -464,7 +470,7 @@ class TextWorld(InventoryHolder):
 
 
 
-    
 
-    
+
+
 
