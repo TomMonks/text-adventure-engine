@@ -1,14 +1,14 @@
 '''
 Inventory item actions
 
-Actions can be taken with inventory items a TextWorld.  Actions are 
+Actions can be taken with inventory items a TextWorld.  Actions are
 at their core a sequence of Command objects that are executed via a specific
 key word.  Actions can be:
 
 Restricted to occur only in specific rooms
 Restricted to occur only if a player is holding the InventoryItem.
 
-All action classes are subclasses of the Abstract InventoryItemAction 
+All action classes are subclasses of the Abstract InventoryItemAction
 super class.
 
 '''
@@ -29,7 +29,7 @@ class InventoryItemAction(ABC):
     @abstractmethod
     def add_command(command):
         pass
-    
+
     @abstractmethod
     def try_to_execute(current_room, command_text):
         pass
@@ -40,7 +40,7 @@ class InventoryItemAction(ABC):
 class BasicInventoryItemAction(InventoryItemAction):
     '''
     A basic inventory item action is a sequence of commands.  Each command
-    may alter the game state and will return a msg.  The msg is concat and 
+    may alter the game state and will return a msg.  The msg is concat and
     returned to the player.
     '''
     def __init__(self, command, command_text='use', invalid_msg=COMMAND_ERROR):
@@ -55,14 +55,14 @@ class BasicInventoryItemAction(InventoryItemAction):
         command_text: str, optional (default='use')
             The command text that triggers the action for this item
 
-        invalid_msg: str, optional (default=COMMAND_ERROR) 
+        invalid_msg: str, optional (default=COMMAND_ERROR)
             The msg to return if the command_text is invalid for this action.
         '''
         if isinstance(command, list):
             self.commands = command
         else:
             self.commands = [command]
-            
+
         self.command_text = command_text
         self.invalid_msg = invalid_msg
 
@@ -75,10 +75,10 @@ class BasicInventoryItemAction(InventoryItemAction):
     def try_to_execute(self, current_room, command_text):
         '''
         Attempt to execute the command using command text.
-        
+
         May fail and if so returns self.invalid_msg.
 
-        This may not be the best way to implement and probably should be 
+        This may not be the best way to implement and probably should be
         implemented in a specialised class makes subclasses actionable
         potential name is `Actionable` or `Interactive`
 
@@ -96,14 +96,14 @@ class BasicInventoryItemAction(InventoryItemAction):
 
 class RestrictedInventoryItemAction(InventoryItemAction):
     '''
-    The action is restricted to be only actionable by a 'holder' when the 
-    item or list of items (requirements) are in hand.  i.e. a player or room 
+    The action is restricted to be only actionable by a 'holder' when the
+    item or list of items (requirements) are in hand.  i.e. a player or room
     holds all required inventory items.
 
-    Note: if a player is the holder then there is no requirement 
+    Note: if a player is the holder then there is no requirement
     to be in a specific room.
     '''
-    def __init__(self, holder, command, requirements, not_holding_msg, 
+    def __init__(self, holder, command, requirements, not_holding_msg,
                  command_txt='use'):
         '''
         Constructor
@@ -112,7 +112,7 @@ class RestrictedInventoryItemAction(InventoryItemAction):
         -------
 
         holder: InventoryItemHolder
-            The player or room that is required to hold the items before action 
+            The player or room that is required to hold the items before action
             can be executed.
 
         command: Command or List
@@ -151,7 +151,7 @@ class RestrictedInventoryItemAction(InventoryItemAction):
         self.commands.append(command)
 
     def try_to_execute(self, current_room, command_text):
-        
+
         # if correct command issed to trigger action.
         if self.command_text != command_text:
             return "You can't do that."
@@ -166,11 +166,28 @@ class RestrictedInventoryItemAction(InventoryItemAction):
 
         return msg
 
-
     def _requirements_satisifed(self):
         return self.holder.in_inventory(self.requirements)
- 
+
+
+########################### Untested code #############################
+
+
+class RoomSpecificInventoryItemAction(InventoryItemAction):
+    '''
+    Action with item will only work in specific room
+    '''
+    def __init__(self, game, context, action):
+        self.game = game
+        self.context = context
+        self.actiom = action
+
+    def try_to_execute(self, command_text):
+        msg = ''
+        if self.game.current_room == self.context:
+            msg = self.action.try_to_execute(command_text)
+
+        return msg
 
 
 
-    

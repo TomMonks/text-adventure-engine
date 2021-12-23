@@ -15,6 +15,7 @@ import os
 DEFAULT_MOVE_ERROR = 'You cannot go that way.'
 DEFAULT_FAIL_MSG = 'You cannnot do that.'
 
+
 class Command(ABC):
     '''
     Abstract base class for all commands.  This has a simple interface
@@ -23,6 +24,7 @@ class Command(ABC):
     @abstractmethod
     def execute(self) -> str:
         pass
+
 
 class MoveRoom(Command):
     '''
@@ -54,7 +56,7 @@ class MoveRoom(Command):
         try:
             self.game.current_room = \
                     self.game.current_room.exit(self.direction)
-             # clear terminal or cmd prompt.
+            # clear terminal or cmd prompt.
             os.system('cls' if os.name == 'nt' else 'clear')
             msg = self.game.current_room.describe()
         except ValueError:
@@ -73,7 +75,7 @@ class ExamineInventoryItem(Command):
 
         room: Room
             Relevant room object
-        
+
         item_name: str
             Name of inventory item to examine
 
@@ -85,17 +87,17 @@ class ExamineInventoryItem(Command):
     def execute(self) -> str:
         item, _ = self.game.find_inventory(self.description)
 
-        if item != None:
+        if item is not None:
             return item.long_description
 
         item, _ = self.room.find_inventory(self.description)
 
-        if item != None:
+        if item is not None:
             return item.long_description
 
         return "You can't do that"
-        
-            
+
+
 class TransferInventory(Command):
     '''
     Transfer an InventoryItem from one InventoryHolder to another.
@@ -109,12 +111,9 @@ class TransferInventory(Command):
 
     def execute(self):
         msg = ''
-
         selected_item, _ = self.holder.find_inventory(self.alias)
         try:
-            
-            if selected_item.fixed == False:
-
+            if selected_item.fixed is False:
                 self.reciever.add_inventory(self.holder.get_inventory(self.alias))
                 msg = 'Okay.'
             else:
@@ -123,8 +122,8 @@ class TransferInventory(Command):
             msg = "You can't do that."
         except KeyError:
             msg = "I'm not sure what you mean."
-        
         return msg
+
 
 class ViewPlayerInventory(Command):
     '''
@@ -150,7 +149,7 @@ class LookAtRoom(Command):
     '''
     def __init__(self, room):
         self.room = room
-    
+
     def execute(self):
         # clear terminal or cmd prompt.
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -168,8 +167,9 @@ class QuitGame(Command):
         self.game.active = False
         return "[bold red]You have quit the game.[/bold red]"
 
+
 class UseInventoryItem(Command):
-    def __init__(self, game, item_name, command_text, 
+    def __init__(self, game, item_name, command_text,
                  fail_message=DEFAULT_FAIL_MSG):
         self.game = game
         self.item_name = item_name
@@ -190,14 +190,14 @@ class UseInventoryItem(Command):
             # try current room
             selected_item, _ = \
                     self.game.current_room.find_inventory(self.item_name)
-            
+
         try:
             for action in selected_item.actions:
-                msg = action.try_to_execute(self.game.current_room, 
+                msg = action.try_to_execute(self.game.current_room,
                                             self.command_text)
         except AttributeError:
             # default if item not in players or room inventory
-            msg = self.fail_message            
+            msg = self.fail_message
 
         return msg
 
@@ -292,3 +292,124 @@ class AppendToCurrentRoomDescription(Command):
         '''
         self.game.current_room.description += self.to_append
         return self.action_text
+
+######################## NOT Tested #########################################################
+
+class AppendToRoomDescription(Command):
+    '''
+    Append some text to a SPECIFIC Room object description.
+    '''
+    def __init__(self, room, to_append, action_text=''):
+        '''
+        Constructor
+
+        Params:
+        ------
+        game: TextWorld
+
+        to_append: str
+            text to append to room description
+
+        action_text: str, optional (default='')
+            To show user.
+        '''
+        self.room = room
+        self.to_append = to_append
+        self.action_text = action_text
+
+    def execute(self) -> str:
+        '''
+        Append the additonal text.
+        '''
+        self.room.description += self.to_append
+        return self.action_text
+
+
+class AddLinkToLocation(Command):
+    '''
+    Add a new exit to the room collection of a context.
+    '''
+    def __init__(self, context, to_add, direction):
+        ''''
+        Construtor
+
+        Params:
+        -------
+        context: Room
+            The room that will be modified
+
+        to_add: Room
+            room to be added to context
+
+        direction: str
+            The direction to naviagate from context to to_add
+        '''
+        self.context = context
+        self.to_add = to_add
+        self.direction = direction
+
+    def execute(self) -> str:
+        self.context.add_exit(self.to_add, self.direction)
+        return ''
+
+
+class AddInventoryItemtoHolder(Command):
+    '''
+    Add one or more inventory items to a room or player inventory
+    '''
+    def __init__(self, items, target):
+        '''
+        Params:
+        ------
+        items: List
+            List of one or more InventoryItems
+
+        target: InventoryHolder
+        '''
+        self.items = items
+        self.target = target
+
+    def execute(self) -> str:
+        for item in self.items:
+            self.target.add_inventory(item)
+
+        return ''
+
+
+class ChangeLocationDescription(Command):
+    '''
+    Completely change the description of a location
+    '''
+    def __init__(self, room, new_description, action_text):
+        self.room = room
+        self.new_description = new_description
+        self.action_text = action_text
+
+    def execute(self) -> str:
+        self.room.description = self.new_description
+        return self.action_text
+
+
+class PlayerDeath(Command):
+    '''
+    End of game because player dies!
+    '''
+    def __init__(self, death_msg, end_game_command):
+        self.death_msg = death_msg
+        self.end_game_command = end_game_command
+
+    def execute(self) -> str:
+        self.end_game_command.execute()
+        return self.death_msg
+
+
+class RemoveLinkToRoom(Command):
+    '''
+    Remove a link/exit from a room
+    '''
+    def __init__(self, context, direction_to_remove):
+        self.context = context
+        self.direction_to_remove = direction_to_remove
+
+    def execute(self) -> str:
+        self.context.remove_exit(self.direction_to_remove)
