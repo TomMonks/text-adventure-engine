@@ -65,6 +65,39 @@ class MoveRoom(Command):
             return msg
 
 
+
+class SetCurrentRoom(Command):
+    '''
+    Set the current room that a player is in.
+    '''
+    def __init__(self, game, new_room):
+        '''
+        Params:
+        -------
+        game: TextWorld
+            Current game
+
+        new_room: Room
+           the target room
+.
+        '''
+        self.game = game
+        self.new_room = new_room
+
+    def execute(self) -> str:
+        '''
+        Execute command to move room.
+        '''
+        msg = ''
+
+        self.game.current_room = self.new_room
+        # clear terminal or cmd prompt.
+        os.system('cls' if os.name == 'nt' else 'clear')
+        msg = self.game.current_room.describe()
+
+        return msg
+
+
 class ExamineInventoryItem(Command):
     def __init__(self, game, room, item_name):
         '''

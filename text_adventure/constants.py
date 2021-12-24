@@ -53,6 +53,8 @@ DIG = 'dig'
 TALK = 'talk'
 THROW = 'throw'
 READ = 'read'
+SAY = 'say'
+WEAR = 'wear'
 
 
 SHOOT = 'shoot'
@@ -73,7 +75,9 @@ CLASSIC_USE_ALIASES = [USE,
                        DIG,
                        TALK,
                        THROW,
-                       READ]
+                       READ,
+                       SAY,
+                       WEAR]
 
 # warfare pack
 WARFARE_USE_ALIASES = CLASSIC_USE_ALIASES \
