@@ -326,6 +326,17 @@ class AppendToCurrentRoomDescription(Command):
         self.game.current_room.description += self.to_append
         return self.action_text
 
+
+class AddActionToInventoryItem(Command):
+    def __init__(self, action, item, execute_msg=""):
+        self.action = action
+        self.item = item
+        self.execute_msg = execute_msg
+
+    def execute(self) -> str:
+        self.item.add_action(self.action)
+        return self.execute_msg
+
 ######################## NOT Tested #########################################################
 
 class AppendToRoomDescription(Command):

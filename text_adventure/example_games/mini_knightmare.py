@@ -2,17 +2,23 @@
 An example text adventure.
 
 A mini Knightmare game...
+
+It is comprised of a start room and three simple puzzles. 
+
 '''
 
 from text_adventure.commands import (
+    AddActionToInventoryItem,
     AddInventoryItemtoHolder,
+    AddLinkToLocation,
     AppendToCurrentRoomDescription,
+    ChangeLocationDescription,
     NullAction, 
     RemoveInventoryItem,
     RemoveInventoryItemFromPlayerOrRoom,
     SetCurrentRoom
 )
-from text_adventure.constants import DEFAULT_CMD_WORDS
+from text_adventure.constants import DEFAULT_CMD_WORDS, NORTH, READ, SOUTH
 
 from text_adventure.world import TextWorld, Room, InventoryItem
 from text_adventure.actions import (
@@ -32,37 +38,27 @@ def load_adventure():
 
     # start fo the game = reception
     throne_room = Room(name="Throne room")
-    throne_room.description = """You are stood in the thrown room of Castle 
-    Knightmare.  Candles scattered around the room bring light and a
-    a large fireplace beings warmth."""
+    throne_room.description = "You are stood in the thrown room of Castle" \
+        + " Knightmare. Candles scattered around the room bring light" \
+            + " and a large fireplace beings warmth." \
+            + " In the corner of the room is a portal."
 
     puzzle1 = Room(name='puzzle1')
-    puzzle1.description = """A long corridor branching in three directions. 
-    To the north is signposted 'WARD'.  
-    The south is  signposted 'RECEPTION'.
-    The east is signposted 'THEATRE'"""
+    puzzle1.description = """You are in a brightly lit room. There is a door to
+    at the far end barred by a portcullis. There are letters scratched into 
+    ground. """
 
-    ward = Room(name="ward")
-    ward.description = """You are on the general medical ward. There are 10 beds
-    and all seem to be full today.  There is a smell of disinfectant. 
-    The exit is to the south"""
-
-    theatre = Room(name="theatre")
-    theatre.description = """You are in the operating theatre. Its empty today as
-    all of the elective operations have been cancelled.
-    An exit is to the west."""
-
-    # add the exits by calling the add_exit() method  
-    #reception.add_exit(corridor, 'n')
-    #corridor.add_exit(reception, 's')
-    #corridor.add_exit(ward, 'n')
-    #corridor.add_exit(theatre, 'e')
-    #ward.add_exit(corridor, 's')
-    #theatre.add_exit(corridor, 'w')
-
-    # store rooms in a list
-    rooms_collection = [throne_room, puzzle1]
+    puzzle2 = Room(name='puzzle2')
+    puzzle2.description = "You are in room with all stone walls." \
+        + " There is an exit to the south. On the north wall is a " \
+            + "huge carving of a face."
     
+    # store rooms in a list
+    rooms_collection = [throne_room, puzzle1, puzzle2]
+
+    # links at the start of the game.
+    puzzle2.add_exit(puzzle1, SOUTH)
+
     #################### CREATE INVENTORY #####################################
 
     # Create all the inventory to be used in the game.  Not all of it will be
@@ -77,20 +73,63 @@ def load_adventure():
     helmet.add_alias('justice')
 
     # portal - this is fixed to the inventory of the room. (can't be picked up)
-    closed_portal = InventoryItem('a portal', fixed=True)
+    closed_portal = InventoryItem('a portal', fixed=True, background=True)
     closed_portal.long_description = """The portal to the Dungeon of Deceit. 
     It has a dull glow. Enter at your own risk!"""
     closed_portal.add_alias('portal')
 
-    open_portal = InventoryItem('a portal', fixed=True)
+    open_portal = InventoryItem('a portal', fixed=True, background=True)
     open_portal.long_description = """The portal to the Dungeon of Deceit. 
     It is glowing brightly. Enter at your own risk!"""
-    open_portal.add_alias('portal')
+    open_portal.add_alias('portal')  
 
     # dungeoneer must wear the helmet    
     throne_room.add_inventory(helmet)
     # initially the portal is closed. 
     throne_room.add_inventory(closed_portal)
+
+
+    ### Puzzle 1
+
+    # letters on the ground
+    letters = InventoryItem('letters', fixed=True, background=True)
+    letters.long_description = "The letters N, P, E, and O are engraved in" \
+            + " ground."
+    letters.add_alias('letters')
+    letters.add_alias('letter')
+    letters.add_alias('ground')
+
+    letter_o = InventoryItem('the letter o', fixed=True, background=True)
+    letter_o.long_description = "The letter O as used in Oscar."
+    letter_o.add_alias('the letter o')
+    letter_o.add_alias('o')
+    letter_o.add_alias('O')
+
+    letter_p = InventoryItem('the letter p', fixed=True, background=True)
+    letter_p.long_description = "The letter P as used in Papa."
+    letter_p.add_alias('p')
+    letter_p.add_alias('P')
+    letter_p.add_alias('the letter p')
+
+    letter_e = InventoryItem('the letter e', fixed=True, background=True)
+    letter_e.long_description = "The letter E as used in Echo"
+    letter_e.add_alias('e')
+    letter_e.add_alias('E')
+    letter_e.add_alias('the letter e')
+
+    letter_n = InventoryItem('the letter n', fixed=True, background=True)
+    letter_n.long_description = "The letter N as used in November"
+    letter_n.add_alias('n')
+    letter_n.add_alias('N')
+    letter_n.add_alias('the letter n')
+
+    puzzle1.add_inventory(letters)
+    puzzle1.add_inventory(letter_o)
+    puzzle1.add_inventory(letter_p)
+    puzzle1.add_inventory(letter_e)
+    puzzle1.add_inventory(letter_n)
+
+    ######################## COMMAND WORDS SETUP ##############################
 
     # customise the command word set
     knightmare_cmd_mapping = DEFAULT_CMD_WORDS
@@ -107,6 +146,9 @@ def load_adventure():
 
     # enter portal
     adventure.add_use_command_alias('enter')
+
+    # touch letters
+    adventure.add_use_command_alias('touch')
 
     # I am Olgarth of legend.  I ahve riddles of different times of different legends.  Three riddles I have and seek answers. 
     # Fail all three and I feed on you... (PlayerDeath)
@@ -171,15 +213,55 @@ def load_adventure():
 
 
     # ENTER the open portal
-    enter_message = NullAction("You step into the bright light of the portal.")
+    enter_message = NullAction("[red]You step into the bright light of the " \
+            + "portal... \n\n[/ red]")
     move_room = SetCurrentRoom(adventure, puzzle1)
     enter_action = BasicInventoryItemAction([enter_message, move_room], 
                                             command_text='enter')
     open_portal.add_action(enter_action)
 
 
-    # set the legal commands for the game
-    # directions a player can move and command they can issue.
+    # puzzle one.
+
+    # 'touch o'.  This will add an action to 'p' and so on.  'n' opens
+    # the portculia and adds a exit.
+    # Tip - create the final action first and work backwards when coding...
+    
+    execute_msg = 'The letter [yellow]glows[/ yellow] briefly and disappears.'
+    
+    remove_n = RemoveInventoryItem(puzzle1, letter_n)
+    open_message = 'The portcullis O.P.E.Ns!'
+    p1_solved = """You are in a brightly lit room. There is an open door to
+    to the north."""
+    new_description = ChangeLocationDescription(puzzle1, p1_solved, 
+                                        action_text=open_message)
+    open_portcullis = AddLinkToLocation(puzzle1, puzzle2, NORTH)
+
+
+    letter_n_action = BasicInventoryItemAction([remove_n, new_description, 
+                                                open_portcullis],
+                                                command_text='touch')
+
+    remove_e = RemoveInventoryItem(puzzle1, letter_e)
+    add_n_action = AddActionToInventoryItem(letter_n_action, letter_n, 
+                                            execute_msg)
+    letter_e_action = BasicInventoryItemAction([remove_e, add_n_action],
+                                               command_text='touch')    
+
+    remove_p = RemoveInventoryItem(puzzle1, letter_p)
+    add_e_action = AddActionToInventoryItem(letter_e_action, letter_e, 
+                                            execute_msg)
+    letter_p_action = BasicInventoryItemAction([remove_p, add_e_action],
+                                                command_text='touch')                                      
+        
+    remove_o = RemoveInventoryItem(puzzle1, letter_o)
+    add_p_action = AddActionToInventoryItem(letter_p_action, letter_p, 
+                                            execute_msg)
+    letter_o_action = BasicInventoryItemAction([remove_o, add_p_action],
+                                                command_text='touch')    
+
+    # only the first letter has its action added on load...
+    letter_o.add_action(letter_o_action)
 
     adventure.opening = "[yellow]Welcome watcher of illusion to the " \
             + " castle of confusion for this is the time of adventure..." \

@@ -21,9 +21,11 @@ from .constants import (
     CLASSIC_USE_ALIASES,
     DEFAULT_CMD_WORDS,
     DEFAULT_LEGAL_MOVES,
+    DO_NOT_UNDERSTAND,
     WARFARE_USE_ALIASES)
 
 from .commands import (
+    NullAction,
     QuitGame,
     ExamineInventoryItem,
     LookAtRoom,
@@ -40,7 +42,7 @@ class InventoryItem:
     An item found in a text adventure world that can be picked up
     or dropped.
     '''
-    def __init__(self, short_description, fixed=False):
+    def __init__(self, short_description, fixed=False, background=False):
         '''
         Construct an InventoryItem
 
@@ -51,10 +53,15 @@ class InventoryItem:
 
         fixed: bool, optional (default=False)
             Can the item be picked up or is it fixed in place in the room?
+
+        background: bool, optional (default=False)
+            Is this a background item that is hidden from the
+            "you can also see" section in the game?
         '''
         self.name = short_description
         self.long_description = ''
         self.fixed = fixed
+        self.background = background
         self.aliases = []
         self.actions = []
 
@@ -117,7 +124,8 @@ class InventoryHolder:
         '''
         msg = ''
         for item in self.inventory:
-            msg += f'{item.name}\n'
+            if item.background is False:
+                msg += f'{item.name}\n'
 
         return msg
 
@@ -148,7 +156,7 @@ class InventoryHolder:
         '''
         selected_item, selected_index = self.find_inventory(item_name)
 
-        # remove at index and return
+        # remove at index and return (potential bug to delete -1 if none found!!!)
         del self.inventory[selected_index]
         return selected_item
 
@@ -156,6 +164,8 @@ class InventoryHolder:
         '''
         Find an inventory item and return it and its index
         in the collection.
+
+        This is a bit clumsy.  Needs improving...
         '''
         selected_item = None
         selected_index = -1
@@ -263,8 +273,11 @@ class Room(InventoryHolder):
     def describe(self):
         msg = self.description
         if len(self.inventory) > 0:
-            msg += '\nYou can also see:\n'
-            msg += self.list_inventory()
+            inv_msg = "\n"
+            inv_msg += self.list_inventory()
+            if inv_msg != "\n":
+                msg += '\nYou can also see:\n' + inv_msg
+           
         return msg
 
 
@@ -393,9 +406,14 @@ class TextWorld(InventoryHolder):
 
         # if attempting to use an item.
         if parsed_command[0] in self.use_aliases:
-            cmd = UseInventoryItem(self, parsed_command[1],
-                                          parsed_command[0])
-            return cmd.execute()
+            try:
+                cmd = UseInventoryItem(self, parsed_command[1],
+                                            parsed_command[0])
+            except IndexError:
+                cmd = NullAction(f"{parsed_command[0]} what?")
+            finally:
+                return cmd.execute()
+            
 
         # else lookup the function that will create the command.
         try:
@@ -419,15 +437,21 @@ class TextWorld(InventoryHolder):
         '''
         Pickup command
         '''
-        item_name = args[0][1]
-        return TransferInventory(self.current_room, self, item_name)
+        try:
+            item_name = args[0][1]
+            return TransferInventory(self.current_room, self, item_name)
+        except IndexError:
+            return NullAction("What would you like to pickup?")
 
     def _create_transfer_to_room_command(self, *args):
         '''
         Drop command
         '''
-        item_name = args[0][1]
-        return TransferInventory(self, self.current_room, item_name)
+        try:
+            item_name = args[0][1]
+            return TransferInventory(self, self.current_room, item_name)
+        except IndexError:
+            return NullAction("What would you like to drop?")
 
     def _create_player_inventory_command(self, *args):
         return ViewPlayerInventory(self)

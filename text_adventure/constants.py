@@ -88,6 +88,7 @@ WARFARE_USE_ALIASES = CLASSIC_USE_ALIASES \
                            PUNCH,
                            EXPLODE]
 
-
+####################### UTILITY CONSTANTS #####################################  
+DO_NOT_UNDERSTAND = "I don't understand."
 
 
