@@ -65,7 +65,6 @@ class MoveRoom(Command):
             return msg
 
 
-
 class SetCurrentRoom(Command):
     '''
     Set the current room that a player is in.
@@ -193,20 +192,25 @@ class QuitGame(Command):
     '''
     Player will quit the game
     '''
-    def __init__(self, game):
+    def __init__(self, game, quit_msg=None):
         self.game = game
+        if quit_msg is None:
+            self.quit_msg = "[bold red]You have quit the game.[/bold red]"
+        else:
+            self.quit_msg = quit_msg
 
     def execute(self):
         self.game.active = False
-        return "[bold red]You have quit the game.[/bold red]"
+        return self.quit_msg
 
 
 class UseInventoryItem(Command):
-    def __init__(self, game, item_name, command_text,
-                 fail_message=DEFAULT_FAIL_MSG):
+    def __init__(self, game, item_alias, command_text,
+                 parsed_command, fail_message=DEFAULT_FAIL_MSG):
         self.game = game
-        self.item_name = item_name
+        self.item_alias = item_alias
         self.command_text = command_text
+        self.parsed_command = parsed_command
         self.fail_message = fail_message
 
     def execute(self):
@@ -217,20 +221,30 @@ class UseInventoryItem(Command):
         msg = ''
 
         # try players inventory first.
-        selected_item, _ = self.game.find_inventory(self.item_name)
+        selected_item, _ = self.game.find_inventory(self.item_alias)
 
         if selected_item is None:
             # try current room
             selected_item, _ = \
-                    self.game.current_room.find_inventory(self.item_name)
+                self.game.current_room.find_inventory(self.item_alias)
 
         try:
+            # dict of arguments an action may use...
+            kwargs = {'item_alias': self.item_alias,
+                      'current_room': self.game.current_room,
+                      'parsed_command': self.parsed_command}
             for action in selected_item.actions:
-                msg = action.try_to_execute(self.game.current_room,
-                                            self.command_text)
+                # only try to execute action is command matches...
+                # maybe actions should be stored in dict???
+                if action.command_text == self.command_text:
+                    msg += action.try_to_execute(self.command_text,
+                                                 **kwargs)
         except AttributeError:
             # default if item not in players or room inventory
             msg = self.fail_message
+
+        if msg == '':
+            msg = 'You cannot do that.'
 
         return msg
 
@@ -337,7 +351,20 @@ class AddActionToInventoryItem(Command):
         self.item.add_action(self.action)
         return self.execute_msg
 
-######################## NOT Tested #########################################################
+
+class ClearInventoryItemActions(Command):
+    '''
+    Reset the inventory item to have no actions...
+    '''
+    def __init__(self, item, execute_msg=''):
+        self.item = item
+        self.execute_msg = execute_msg
+
+    def execute(self) -> str:
+        # reset the inventory item actions.
+        self.item.actions = []
+        return self.execute_msg
+
 
 class AppendToRoomDescription(Command):
     '''
@@ -405,12 +432,16 @@ class AddInventoryItemtoHolder(Command):
         '''
         Params:
         ------
-        items: List
+        items: InventoryItem or List
             List of one or more InventoryItems
 
         target: InventoryHolder
         '''
-        self.items = items
+        if isinstance(items, list):
+            self.items = items
+        else:
+            self.items = [items]
+
         self.target = target
 
     def execute(self) -> str:

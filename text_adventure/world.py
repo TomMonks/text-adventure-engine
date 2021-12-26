@@ -111,6 +111,13 @@ class InventoryHolder:
     This simulates "picking up" and "dropping" items in a TextWorld
     '''
     def __init__(self):
+        '''
+        Params:
+        ------
+        capacity: str or int, optional (default='inf')
+            specify a capacity for the holder.
+            'inf'=infinite
+        '''
         # inventory just held in a list interally
         self.inventory = []
 
@@ -156,7 +163,7 @@ class InventoryHolder:
         '''
         selected_item, selected_index = self.find_inventory(item_name)
 
-        # remove at index and return (potential bug to delete -1 if none found!!!)
+        # remove at index and return (potential bug to delete -1 if none found)
         del self.inventory[selected_index]
         return selected_item
 
@@ -277,9 +284,8 @@ class Room(InventoryHolder):
             inv_msg += self.list_inventory()
             if inv_msg != "\n":
                 msg += '\nYou can also see:\n' + inv_msg
-           
-        return msg
 
+        return msg
 
 
 class TextWorld(InventoryHolder):
@@ -360,7 +366,6 @@ class TextWorld(InventoryHolder):
         # true while the game is active.
         self.active = True
 
-
     def __repr__(self):
         '''
         String representation of the class
@@ -371,7 +376,6 @@ class TextWorld(InventoryHolder):
         desc += f'\tlegal_commands={self.legal_commands},\n'
         desc += f'\tcurrent_room={self.current_room})'
         return desc
-
 
     def add_use_command_alias(self, alias):
         '''
@@ -401,19 +405,18 @@ class TextWorld(InventoryHolder):
             return cmd.execute()
 
         # split user input into list
-        parsed_command = command.split()
-        parsed_command[0] == parsed_command[0].lower()
+        parsed_command = command.lower().split()
 
         # if attempting to use an item.
         if parsed_command[0] in self.use_aliases:
             try:
-                cmd = UseInventoryItem(self, parsed_command[1],
-                                            parsed_command[0])
+                cmd = UseInventoryItem(self, item_alias=parsed_command[1],
+                                       command_text=parsed_command[0],
+                                       parsed_command=parsed_command)
             except IndexError:
                 cmd = NullAction(f"{parsed_command[0]} what?")
             finally:
                 return cmd.execute()
-            
 
         # else lookup the function that will create the command.
         try:
@@ -426,8 +429,11 @@ class TextWorld(InventoryHolder):
         return cmd.execute()
 
     def _create_examine_command(self, *args):
-        item_name = args[0][1]
-        return ExamineInventoryItem(self, self.current_room, item_name)
+        try:
+            item_name = args[0][1]
+            return ExamineInventoryItem(self, self.current_room, item_name)
+        except IndexError:
+            return NullAction("What would you like to examine?")
 
     def _create_move_room_command(self, *args):
         direction = args[0]
@@ -490,11 +496,3 @@ class TextWorld(InventoryHolder):
         for user_cmd, mapped_cmd in zip(command_words, command_funcs):
             custom_commands[user_cmd] = mapped_cmd
         return custom_commands
-
-
-
-
-
-
-
-

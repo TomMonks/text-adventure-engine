@@ -24,7 +24,7 @@ def play_text_adventure(adventure):
         user_input = input("\nWhat do you want to do? >>> ")
         response = adventure.take_action(user_input)
         print(response)
-    print('Game over!')
+    print('Your adventure ends here.')
 
 
 if __name__ == '__main__':
