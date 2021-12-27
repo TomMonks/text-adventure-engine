@@ -19,10 +19,11 @@ from text_adventure.commands import (
     PlayerDeath,
     QuitGame,
     RemoveInventoryItem,
-    RemoveInventoryItemFromPlayerOrRoom,
     SetCurrentRoom
 )
-from text_adventure.constants import DEFAULT_CMD_WORDS, EAST, GIVE, NORTH, SOUTH, WEST
+from text_adventure.constants import (
+    DEFAULT_CMD_WORDS,
+    EAST, GIVE, NORTH, SOUTH, WEST)
 
 from text_adventure.world import TextWorld, Room, InventoryItem
 from text_adventure.actions import (
@@ -34,6 +35,13 @@ from text_adventure.actions import (
 )
 
 START_INDEX = 0
+GAME_NAME = 'Mini Knightmare'
+OPENING_DESC = "[yellow]Welcome watcher of illusion to the " \
+    + " castle of confusion for this is the time of adventure..." \
+    + "\n\nI Treguard issue the challenge.  Beyond this portal lies" \
+    + " the dungeon of deceit which I alone have mastered. " \
+    + " But you who have crossed time must master it also..." \
+    + "\n\nEnter stranger... [/yellow]"
 
 
 def load_adventure():
@@ -41,7 +49,7 @@ def load_adventure():
     Return a mini knightmare text world adventure.
 
     '''
-    ##################### CREATE ROOMS AND LINKS ##############################
+    # STEP 1: CREATE ROOMS AND LINKS #########################################
 
     # Let's instantiate some Room objects to represent our network of rooms
 
@@ -89,11 +97,114 @@ def load_adventure():
     rooms_collection = [antechamber, puzzle1, puzzle2, puzzle3, puzzle4,
                         dark_room]
 
-    #################### CREATE INVENTORY #####################################
+    # STEP 2. CREATE INVENTORY ###############################################
     # Create all the inventory to be used in the game.  Not all of it will be
     # added to the game immediately.
 
-    # add inventory items
+    # 2.1 Antechamber inventory ##############################################
+    helmet, closed_portal, open_portal, treguard, treguard2 = \
+        create_antechamber_inventory()
+
+    # dungeoneer must wear the helmet
+    antechamber.add_inventory(helmet)
+    # initially the portal is closed.
+    antechamber.add_inventory(closed_portal)
+    antechamber.add_inventory(treguard)
+
+    # 2.2 Puzzle 1 inventory #################################################
+    # letters on the ground
+    letters, letter_o, letter_p, letter_e, letter_n = \
+        create_puzzle1_inventory()
+
+    puzzle1.add_inventory(letters)
+    puzzle1.add_inventory(letter_o)
+    puzzle1.add_inventory(letter_p)
+    puzzle1.add_inventory(letter_e)
+    puzzle1.add_inventory(letter_n)
+
+    # 2.2 Puzzle 2 inventory: olgarth of legend ##############################
+    olgarth, olgarth2a, olgarth2b = create_puzzle2_inventory()
+    puzzle2.add_inventory(olgarth)
+
+    # 2.3 Puzzle 3 inventory: Lilith #########################################
+    lilith = create_puzzle_3_inventory()
+    puzzle3.add_inventory(lilith)
+
+    # 2.4 MISC Inventory #####################################################
+    # spell
+    spell, ruby, lamp = create_misc_inventory()
+
+    # STEP 3. SETUP ADVRENTURE OBJECT + COMMANDS #############################
+    adventure = setup_adventure(rooms_collection)
+
+    # 3.1 ANTECHAMBER ACTIONS ################################################
+    # wear helment (if in inventory)
+    # enter portal (if wearing helmet)
+    create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal,
+                               open_portal, adventure)
+
+    # talk to treguard
+    # 'answer' treguard and choose either a lamp or ruby
+    create_treguard_actions(antechamber, treguard, treguard2, ruby,
+                            lamp, adventure)
+
+    # 3.2 PUZZLE 1: letters ##################################################
+    # Player must 'touch' the letters in the correct order.
+    create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e,
+                           letter_n)
+
+    # 3.4 PUZZLE 2: olgarth of legend ########################################
+    # Olgarth asks 2 riddles
+    # 0 correct - death
+    # 1 correct - open way ahead (puzzle 3)
+    # 2 correct - open + bridge spell.
+    # 'answer olgarth <answer>'
+    create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b,
+                           spell, adventure)
+
+    # 3.5 PUZZLE 3: LILITH & THE CHASM #######################################
+    # Lilith and the chasm
+    # Cast Bridge spell by-passes lilith
+    # Give Lilith ruby - she creates bridge.
+    create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure)
+
+    return adventure
+
+
+def create_misc_inventory():
+    '''
+    Create misc inventory that is used within the game.  These might
+    be relevant (or obtained and then used across) multiple puzzles
+    '''
+    spell = InventoryItem('The bridge spell')
+    spell.long_description = "Cast me if you wish to avoid the depths"
+    spell.add_alias("bridge")
+
+    # ruby
+    ruby = InventoryItem('ruby')
+    ruby.long_description = "A beautiful and valuable ruby. " \
+        + "It might come in useful!"
+    ruby.add_alias('ruby')
+
+    # lamp
+    lamp = InventoryItem('lamp')
+    lamp.long_description = 'The lamp has two crosses engraved on it." \
+        + " It might come in useful!'
+    lamp.add_alias('light')
+    lamp.add_alias('lamp')
+
+    return spell, ruby, lamp
+
+
+def create_antechamber_inventory():
+    '''
+    The antechamber is the beginning of the game and is where
+    Treguard resides.
+
+    Returns:
+    -------
+    tuple: (helmet, closed_portal, open_portal, treguard, treguard2)
+    '''
     helmet = InventoryItem('The Helmet of Justice')
     helmet.long_description = """The fabled helmet of justice!
     The helmet protects a dungeoneer just like a standard helmet, but also
@@ -128,16 +239,19 @@ def load_adventure():
     treguard2.add_alias("treguard")
     treguard.add_alias("tre")
 
-    # dungeoneer must wear the helmet
-    antechamber.add_inventory(helmet)
-    # initially the portal is closed.
-    antechamber.add_inventory(closed_portal)
-    # treguard
-    antechamber.add_inventory(treguard)
+    return helmet, closed_portal, open_portal, treguard, treguard2
 
-    ### Puzzle 1
 
-    # letters on the ground
+def create_puzzle1_inventory():
+    '''
+    Puzzle 1 is a simple anagrame. Players need to spell open by touching
+    the letters in the correct order.  There is also a general letters item
+    that describes the scene.
+
+    Returns:
+    -------
+    tuple: (letters, letter_o, letter_p, letter_e, letter_n)
+    '''
     letters = InventoryItem('letters', fixed=True, background=True)
     letters.long_description = "The letters N, P, E, and O are engraved in" \
         + " ground."
@@ -174,17 +288,21 @@ def load_adventure():
     letter_n.add_alias('N')
     letter_n.add_alias('the letter n')
 
-    puzzle1.add_inventory(letters)
-    puzzle1.add_inventory(letter_o)
-    puzzle1.add_inventory(letter_p)
-    puzzle1.add_inventory(letter_e)
-    puzzle1.add_inventory(letter_n)
+    return letters, letter_o, letter_p, letter_e, letter_n
 
-    # Puzzle 2: olgarth of legend
-    # 2 riddles
-    # 0 correct = death
-    # 1 correct = open door
-    # 2 correct = open door + spell
+
+def create_puzzle2_inventory():
+    '''
+    Puzzle 2 inventory.
+    Olgarth of legends.
+
+    There are three olgarth objects.  olgarth is replaced either by
+    olgarth2a (correct answer) or olgarth2b (incorrect answer)
+
+    Returns:
+    -------
+    Tuple (olgarth, olgarth2a, olgarth2b)
+    '''
     olgarth = InventoryItem("Olgarth", fixed=True, background=True)
     olgarth.long_description = "A creature appears to live within the wall" \
         + " itself and is manifested as a giant face."
@@ -192,8 +310,6 @@ def load_adventure():
     olgarth.add_alias("face")
     olgarth.add_alias("creature")
     olgarth.add_alias("carving")
-
-    puzzle2.add_inventory(olgarth)
 
     # olgarth for second riddle... first answer correct.
     olgarth2a = InventoryItem("Olgarth", fixed=True, background=True)
@@ -212,41 +328,26 @@ def load_adventure():
     olgarth2b.add_alias("face")
     olgarth2b.add_alias("creature")
     olgarth2b.add_alias("carving")
+    return olgarth, olgarth2a, olgarth2b
 
-    # Puzzle 3
+def create_puzzle_3_inventory():
     lilith = InventoryItem("Lilith", fixed=True, background=True)
     lilith.long_description = "A mysterious figure in a dark hood."
     lilith.add_alias('lilith')
     lilith.add_alias('figure')
+    return lilith
 
-    puzzle3.add_inventory(lilith)
 
-    # spell
-    spell = InventoryItem('The bridge spell')
-    spell.long_description = "Cast me if you wish to avoid the depths"
-    spell.add_alias("bridge")
-
-    # ruby
-    ruby = InventoryItem('ruby')
-    ruby.long_description = "A beautiful and valuable ruby. " \
-        + "It might come in useful!"
-    ruby.add_alias('ruby')
-
-    # lamp
-    lamp = InventoryItem('lamp')
-    lamp.long_description = 'The lamp has two crosses engraved on it." \
-        + " It might come in useful!'
-    lamp.add_alias('light')
-    lamp.add_alias('lamp')
-
-    ######################## COMMAND WORDS SETUP ##############################
-
+def setup_adventure(rooms_collection):
+    '''
+    create adventure object and setup command interface.
+    '''
     # customise the command word set
     knightmare_cmd_mapping = DEFAULT_CMD_WORDS
     # = ['look', 'inv', 'get', 'drop', 'ex', 'quit']
 
     # create the game room
-    adventure = TextWorld(name='mini knightmare', rooms=rooms_collection,
+    adventure = TextWorld(name=GAME_NAME, rooms=rooms_collection,
                           start_index=START_INDEX,
                           command_word_mapping=knightmare_cmd_mapping,
                           use_aliases='classic')
@@ -263,49 +364,13 @@ def load_adventure():
     # answer riddles or choices
     adventure.add_use_command_alias('answer')
 
-    # ANTECHAMBER ACTIONS ####################################################
-    # wear helment (if in inventory)
-    # enter portal (if wearing helmet)
-    create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal,
-                               open_portal, adventure)
-
-    # talk to treguard
-    # 'answer' treguard and choose either a lamp or ruby
-    create_treguard_actions(antechamber, treguard, treguard2, ruby,
-                            lamp, adventure)
-
-    # PUZZLE 1: letters ######################################################
-    # Player must 'touch' the letters in the correct order.
-    create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e,
-                           letter_n)
-
-    # PUZZLE 2: olgarth of legend ############################################
-    # Olgarth asks 2 riddles
-    # 0 correct - death
-    # 1 correct - open way ahead (puzzle 3)
-    # 2 correct - open + bridge spell.
-    # 'answer olgarth <answer>'
-    create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b,
-                           spell, adventure)
-
-    # PUZZLE 3: LILITH & THE CHASM ###########################################
-    # Lilith and the chasm
-    # Cast Bridge spell by-passes lilith
-    # Give Lilith ruby - she creates bridge.
-    create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure)
-
-    # GAME OPENING INFO ######################################################
-
-    adventure.opening = "[yellow]Welcome watcher of illusion to the " \
-        + " castle of confusion for this is the time of adventure..." \
-        + "\n\nI Treguard issue the challenge.  Beyond this portal lies" \
-        + " the dungeon of deceit which I alone have mastered. " \
-        + " But you who have crossed time must master it also..." \
-        + "\n\nEnter stranger... [/yellow]"
-
+    # Adventure opening line.
+    adventure.opening = OPENING_DESC
     return adventure
 
-def create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal, open_portal, adventure):
+
+def create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal,
+                               open_portal, adventure):
     '''
     Antechamber actions
 
@@ -359,7 +424,7 @@ def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp, advent
     '''
     TRE_SPEACH = "[italic green]'Welcome stranger...To help you on " \
         + "your quest I can offer you a precious 'ruby' or the 'lamp of the" \
-        + "cross'\nAnswer me...which do you choose?'[/ italic green]"
+        + " cross'\nAnswer me...which do you choose?'[/ italic green]"
     TRE2_SPEACH = "[italic green]'The dungeon awaits you.'[/ italic green]"
     TRE_UNIMPRESSED = 'Treguard looks unimpressed with your choice.'
     CHOOSE_RUBY = "Treguard hands you a ruby." \
