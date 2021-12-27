@@ -22,15 +22,18 @@ from text_adventure.commands import (
     RemoveInventoryItemFromPlayerOrRoom,
     SetCurrentRoom
 )
-from text_adventure.constants import DEFAULT_CMD_WORDS, EAST, NORTH, SOUTH, WEST
+from text_adventure.constants import DEFAULT_CMD_WORDS, EAST, GIVE, NORTH, SOUTH, WEST
 
 from text_adventure.world import TextWorld, Room, InventoryItem
 from text_adventure.actions import (
     BasicInventoryItemAction,
     ChoiceInventoryItemAction,
     ConditionalInventoryItemAction,
-    RestrictedInventoryItemAction
+    RestrictedInventoryItemAction,
+    RoomSpecificInventoryItemAction
 )
+
+START_INDEX = 0
 
 
 def load_adventure():
@@ -60,14 +63,31 @@ def load_adventure():
         + "huge carving of a face."
 
     puzzle3 = Room(name='chasm')
-    puzzle3.description = "to be added"
+    puzzle3.description = "You are standing in a large cavern to the south" \
+        + " of a deep chasm.  On the north side the cavern can be exited via" \
+        + " an entrance to a tunnel in the shape of a serpent's head." \
+        + " a dark figure stands on the other side of the chasm."
 
-    # store rooms in a list
-    rooms_collection = [antechamber, puzzle1, puzzle2, puzzle3]
+    puzzle4 = Room(name='tunnel')
+    puzzle4.description = "You are standing in a long tunnel." \
+        + " To the west a door has two crosses engraved above it." \
+        + "  To the east is a door with two upside down crosses engaved" \
+        + " above it.  Another exit leads South."
+
+    dark_room = Room(name='dark room')
+    dark_room.description = "[bold]It is very dark.[/ bold]\n" \
+        + "There is a single beam of light penetrating the ceiling" \
+        + " and shining in the centre of the chamber.\n"\
+        + "You sense an evil presence in this room."
 
     # links at the start of the game.
     puzzle2.add_exit(puzzle1, SOUTH)
     puzzle3.add_exit(puzzle2, EAST)
+    puzzle4.add_exit(puzzle3, SOUTH)
+
+    # store rooms in a list
+    rooms_collection = [antechamber, puzzle1, puzzle2, puzzle3, puzzle4,
+                        dark_room]
 
     #################### CREATE INVENTORY #####################################
     # Create all the inventory to be used in the game.  Not all of it will be
@@ -193,6 +213,14 @@ def load_adventure():
     olgarth2b.add_alias("creature")
     olgarth2b.add_alias("carving")
 
+    # Puzzle 3
+    lilith = InventoryItem("Lilith", fixed=True, background=True)
+    lilith.long_description = "A mysterious figure in a dark hood."
+    lilith.add_alias('lilith')
+    lilith.add_alias('figure')
+
+    puzzle3.add_inventory(lilith)
+
     # spell
     spell = InventoryItem('The bridge spell')
     spell.long_description = "Cast me if you wish to avoid the depths"
@@ -219,7 +247,7 @@ def load_adventure():
 
     # create the game room
     adventure = TextWorld(name='mini knightmare', rooms=rooms_collection,
-                          start_index=0,
+                          start_index=START_INDEX,
                           command_word_mapping=knightmare_cmd_mapping,
                           use_aliases='classic')
 
@@ -235,34 +263,67 @@ def load_adventure():
     # answer riddles or choices
     adventure.add_use_command_alias('answer')
 
-    ## Lilith
-    ## No master, but a mistress rules here.  I am called Lillith and this is my domain. The only
-    # way beyond is through the serpents mouth.  You must leave.  Kindly use the alternative exit.
-    # For some small consideration I might just spare you and allow you to leave through the serpent's mouth.
-    # have you anything that might interest me?
+    # ANTECHAMBER ACTIONS ####################################################
+    # wear helment (if in inventory)
+    # enter portal (if wearing helmet)
+    create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal,
+                               open_portal, adventure)
 
-    # summon the courseway.
-    ## Spellcasting bridge
+    # talk to treguard
+    # 'answer' treguard and choose either a lamp or ruby
+    create_treguard_actions(antechamber, treguard, treguard2, ruby,
+                            lamp, adventure)
 
-    # magic lamp - includes a symbol.  This helps choose the right door...
-    # Death if not carrying the
+    # PUZZLE 1: letters ######################################################
+    # Player must 'touch' the letters in the correct order.
+    create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e,
+                           letter_n)
 
+    # PUZZLE 2: olgarth of legend ############################################
+    # Olgarth asks 2 riddles
+    # 0 correct - death
+    # 1 correct - open way ahead (puzzle 3)
+    # 2 correct - open + bridge spell.
+    # 'answer olgarth <answer>'
+    create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b,
+                           spell, adventure)
 
-    ######################## ANTECHAMBER ACTIONS ###########################
-    ###### WEAR THE HELMET #################################################
+    # PUZZLE 3: LILITH & THE CHASM ###########################################
+    # Lilith and the chasm
+    # Cast Bridge spell by-passes lilith
+    # Give Lilith ruby - she creates bridge.
+    create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure)
 
-    # The dungeoneer must posess the helmet and wear it.  This activates
-    # portal to the Dungeon of Deciet.
+    # GAME OPENING INFO ######################################################
 
-    # we use two commands with the grapes.
-    #    1. Remove the helmet from the players inventory
-    #    2. Output a fun message to the player.
-    #    3. Replace the closed_portal object with open_portal.
+    adventure.opening = "[yellow]Welcome watcher of illusion to the " \
+        + " castle of confusion for this is the time of adventure..." \
+        + "\n\nI Treguard issue the challenge.  Beyond this portal lies" \
+        + " the dungeon of deceit which I alone have mastered. " \
+        + " But you who have crossed time must master it also..." \
+        + "\n\nEnter stranger... [/yellow]"
+
+    return adventure
+
+def create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal, open_portal, adventure):
+    '''
+    Antechamber actions
+
+    The dungeoneer must posess the helmet and wear it.  This activates
+    portal to the Dungeon of Deciet.
+
+    Wear helmet
+    1. Remove the helmet from the players inventory
+    2. Output a fun message to the player.
+    3. Replace the closed_portal object with open_portal.
+
+    The open portal can be entered. This moves the player to puzzle 1.
+    '''
+    # WEAR THE HELMET ########################################################
     remove_helmet = RemoveInventoryItem(adventure, helmet)
     wear_message = NullAction("You place the Helmet of Justice on your head.")
     remove_closed_portal = RemoveInventoryItem(antechamber, closed_portal)
     add_open_portal = AddInventoryItemtoHolder([open_portal], antechamber)
-
     wear_cmds = [remove_helmet, wear_message, remove_closed_portal,
                  add_open_portal]
 
@@ -292,20 +353,19 @@ def load_adventure():
                                             command_text='enter')
     open_portal.add_action(enter_action)
 
-    #### TALK TO TREGUARD and CHOOSE a ruby or lamp ###################
+def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp, adventure):
+    '''
+    TALK TO TREGUARD and CHOOSE a ruby or lamp
+    '''
     TRE_SPEACH = "[italic green]'Welcome stranger...To help you on " \
         + "your quest I can offer you a precious 'ruby' or the 'lamp of the" \
         + "cross'\nAnswer me...which do you choose?'[/ italic green]"
-
     TRE2_SPEACH = "[italic green]'The dungeon awaits you.'[/ italic green]"
-
     TRE_UNIMPRESSED = 'Treguard looks unimpressed with your choice.'
-
     CHOOSE_RUBY = "Treguard hands you a ruby." \
         + "[italic green]\n'A rare and precious gem." \
         + "Let us hope its value is of value in the dungeon'" \
         + "[/ italic green]"
-
     CHOOSE_LAMP = "Treguard hands you a lamp." \
         + "[italic green]\n'The dungeon is a dark place" \
         + "Let this lamp light your path in your darkest hour.'" \
@@ -339,60 +399,7 @@ def load_adventure():
     talk_tre2 = BasicInventoryItemAction(NullAction(TRE2_SPEACH), 'talk')
     treguard2.add_action(talk_tre2)
 
-    # puzzle one: touch letters in correct order
-    # manage response when letters touched out of order
-
-    wrong_order = BasicInventoryItemAction(NullAction("Nothing happens."),
-                                           command_text="touch")
-    letter_p.add_action(wrong_order)
-    letter_e.add_action(wrong_order)
-    letter_n.add_action(wrong_order)
-
-    # 'touch o'.  This will add an action to 'p' and so on.  'n' opens
-    # the portculia and adds a exit.
-    # Tip - create the final action first and work backwards when coding...
-
-    execute_msg = 'The letter [yellow]glows[/ yellow] briefly and disappears.'
-
-    remove_n = RemoveInventoryItem(puzzle1, letter_n)
-    open_message = 'The portcullis O.P.E.Ns!'
-    p1_solved = """You are in a brightly lit room. There is an open door to
-    to the north."""
-    new_description = ChangeLocationDescription(puzzle1, p1_solved,
-                                                open_message)
-    open_portcullis = AddLinkToLocation(puzzle1, puzzle2, NORTH)
-    letter_n_action = BasicInventoryItemAction([remove_n, new_description,
-                                                open_portcullis],
-                                               command_text='touch')
-
-    clear_n = ClearInventoryItemActions(letter_n)
-    remove_e = RemoveInventoryItem(puzzle1, letter_e)
-    add_n_action = AddActionToInventoryItem(letter_n_action, letter_n,
-                                            execute_msg)
-    letter_e_action = BasicInventoryItemAction([clear_n, remove_e,
-                                                add_n_action],
-                                               command_text='touch')
-
-    clear_e = ClearInventoryItemActions(letter_e)
-    remove_p = RemoveInventoryItem(puzzle1, letter_p)
-    add_e_action = AddActionToInventoryItem(letter_e_action, letter_e,
-                                            execute_msg)
-    letter_p_action = BasicInventoryItemAction([clear_e, remove_p,
-                                                add_e_action],
-                                               command_text='touch')
-
-    clear_p = ClearInventoryItemActions(letter_p)
-    remove_o = RemoveInventoryItem(puzzle1, letter_o)
-    add_p_action = AddActionToInventoryItem(letter_p_action, letter_p,
-                                            execute_msg)
-    letter_o_action = BasicInventoryItemAction([clear_p, remove_o,
-                                                add_p_action],
-                                               command_text='touch')
-
-    # only the first letter has its action added on load...
-    letter_o.add_action(letter_o_action)
-
-    ################## PUZZLE 2: olgarth of legend #############################
+def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spell, adventure):
     CORRECT_ANSWER = "[bold italic red]'Truth accepted'[/ bold italic red]"
     ONE_INCORRECT_ANSWER = 'You do not speak the truth.'
     DEATH_MSG = "[bold red]'I FEED UPON YOU.'[/ bold red]" \
@@ -503,16 +510,115 @@ def load_adventure():
                                                 command_text='answer')
     olgarth.add_action(olgarth_qa)
 
+def create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e, letter_n):
+    ############ PUZZLE 1: touch letters in correct order ##################Ç
+    # manage response when letters touched out of order
+
+    wrong_order = BasicInventoryItemAction(NullAction("Nothing happens."),
+                                        command_text="touch")
+    letter_p.add_action(wrong_order)
+    letter_e.add_action(wrong_order)
+    letter_n.add_action(wrong_order)
+
+    # 'touch o'.  This will add an action to 'p' and so on.  'n' opens
+    # the portculia and adds a exit.
+    # Tip - create the final action first and work backwards when coding...
+
+    execute_msg = 'The letter [yellow]glows[/ yellow] briefly and disappears.'
+
+    remove_n = RemoveInventoryItem(puzzle1, letter_n)
+    open_message = 'The portcullis O.P.E.Ns!'
+    p1_solved = """You are in a brightly lit room. There is an open door to
+    to the north."""
+    new_description = ChangeLocationDescription(puzzle1, p1_solved,
+                                                open_message)
+    open_portcullis = AddLinkToLocation(puzzle1, puzzle2, NORTH)
+    letter_n_action = BasicInventoryItemAction([remove_n, new_description,
+                                                open_portcullis],
+                                               command_text='touch')
+
+    clear_n = ClearInventoryItemActions(letter_n)
+    remove_e = RemoveInventoryItem(puzzle1, letter_e)
+    add_n_action = AddActionToInventoryItem(letter_n_action, letter_n,
+                                            execute_msg)
+    letter_e_action = BasicInventoryItemAction([clear_n, remove_e,
+                                                add_n_action],
+                                               command_text='touch')
+
+    clear_e = ClearInventoryItemActions(letter_e)
+    remove_p = RemoveInventoryItem(puzzle1, letter_p)
+    add_e_action = AddActionToInventoryItem(letter_e_action, letter_e,
+                                            execute_msg)
+    letter_p_action = BasicInventoryItemAction([clear_e, remove_p,
+                                                add_e_action],
+                                               command_text='touch')
+
+    clear_p = ClearInventoryItemActions(letter_p)
+    remove_o = RemoveInventoryItem(puzzle1, letter_o)
+    add_p_action = AddActionToInventoryItem(letter_p_action, letter_p,
+                                            execute_msg)
+    letter_o_action = BasicInventoryItemAction([clear_p, remove_o,
+                                                add_p_action],
+                                               command_text='touch')
+
+    # only the first letter has its action added on load...
+    letter_o.add_action(letter_o_action)
+
+def create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure):
+    LIL_SPEAK = "[italic yellow] 'No master, but a mistress rules here. " \
+        + "I am called Lilith and this is my domain. " \
+        + "The only way beyond is through the serpent's mouth." \
+        + "You must leave. Kindly use the alternative exit. " \
+        + "For some small consideration I might just spare you " \
+        + "and allow you to leave through the serpent's mouth. " \
+        + "Have you anything that might interest me?'[/ italic yellow] :snake:"
+
+    SPELLCAST = "[italic pink] spellcasting: B.R.I.D.G.E [/ italic pink]"
+    BRIDGE_APPEAR = "\nA bridge magically appears across the chasm."
+    LIL_ACCEPT = "[italic yellow]'I accept your offering'[/ italic yellow]"\
+        + ":snake:"
+    LIL_LEAVE = "\n(Lilith fades into nothingness)"
+    UPDATE_DESC = "You are standing in a large cavern on the south side" \
+        + " of a [bold]bridge[/bold] crossing a deep chasm. On the north" \
+        + " side the cavern can be exited via an entrance to a tunnel" \
+        + "  in the shape of a serpent's head."
+    NO_RUBY = "Its probably best not to offer her something you don't have."
+    NO_SPELL = "you don't have a spell"
+    # talk to lilith
+    talk_lil = BasicInventoryItemAction(NullAction(LIL_SPEAK),
+                                        command_text="talk")
+    lilith.add_action(talk_lil)
+
+    # SPELLCASTING
+    spellcast_cmd = NullAction(SPELLCAST)
+    remove_spell = RemoveInventoryItem(adventure, spell)
+    remove_lil = RemoveInventoryItem(puzzle3, lilith)
+    add_tunnel = AddLinkToLocation(puzzle3, puzzle4, 'n')
+    new_desc = \
+        ChangeLocationDescription(puzzle3, UPDATE_DESC,
+                                  BRIDGE_APPEAR + "\n" + LIL_LEAVE)
+    cmds = [spellcast_cmd, remove_spell, remove_lil, add_tunnel, new_desc]
+    reqs = [spell]
+    command_txt = 'spellcasting'
+    spell_action = RestrictedInventoryItemAction(adventure, cmds, reqs,
+                                                 NO_SPELL,
+                                                 command_txt=command_txt)
+    spell_p3_action = RoomSpecificInventoryItemAction(adventure, puzzle3,
+                                                      spell_action,
+                                                      command_text=command_txt)
+
+    spell.add_action(spell_p3_action)
 
 
-
-    ################## GAME OPENING INFO ######################################
-
-    adventure.opening = "[yellow]Welcome watcher of illusion to the " \
-        + " castle of confusion for this is the time of adventure..." \
-        + "\n\nI Treguard issue the challenge.  Beyond this portal lies" \
-        + " the dungeon of deceit which I alone have mastered. " \
-        + " But you who have crossed time must master it also..." \
-        + "\n\n Enter stranger... [/yellow]"
-
-    return adventure
+    # Give ruby to lilith
+    remove_ruby = RemoveInventoryItem(adventure, ruby)
+    lil_give_txt = NullAction(LIL_ACCEPT)
+    cmds = [remove_ruby, remove_lil, lil_give_txt, add_tunnel, new_desc]
+    reqs = [ruby]
+    ruby_action = RestrictedInventoryItemAction(adventure, cmds, reqs,
+                                                NO_RUBY,
+                                                command_txt=GIVE)
+    ruby_p3_action = RoomSpecificInventoryItemAction(adventure, puzzle3,
+                                                     ruby_action,
+                                                     command_text=GIVE)
+    ruby.add_action(ruby_p3_action)

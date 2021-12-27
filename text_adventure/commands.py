@@ -455,7 +455,7 @@ class ChangeLocationDescription(Command):
     '''
     Completely change the description of a location
     '''
-    def __init__(self, room, new_description, action_text):
+    def __init__(self, room, new_description, action_text=''):
         self.room = room
         self.new_description = new_description
         self.action_text = action_text

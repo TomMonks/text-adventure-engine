@@ -260,10 +260,14 @@ class RoomSpecificInventoryItemAction(InventoryItemAction):
     '''
     Action with item will only work in specific room
     '''
-    def __init__(self, game, context, action):
+    def __init__(self, game, context, action, command_text='use'):
         self.game = game
         self.context = context
-        self.actiom = action
+        self.action = action
+        self.command_text = command_text
+
+    def add_command():
+        pass
 
     def try_to_execute(self, command_text, **kwargs):
         msg = ''
