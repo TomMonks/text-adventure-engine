@@ -300,7 +300,7 @@ class RemoveInventoryItemFromPlayerOrRoom(Command):
         return msg
 
 
-class NullAction(Command):
+class NullCommand(Command):
     '''
     No command is executed, but a static message is returned.
     '''

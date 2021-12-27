@@ -1,21 +1,34 @@
 '''
-An example text adventure.
+A mini Knightmare text adventure game.
+--------------------------------------
 
-A mini Knightmare game...
+Knightmare was a popular TV programme in the early to mid 1990s
+shown on ITV in UK.  This game is a text adventure version
+of a mini Knightmare quest.  As a text adventure the mechanics
+are different from the TV show and it is intended as a fun tribute.
 
-It is comprised of a start room and three simple puzzles.
+Credits:
+-------
+The puzzles in this game are partially based on the first episode of
+Knightmare.
 
+Rooms in the game:
+------------------
+* antechamer - the start room where the quest begins
+* puzzle1 - where a player must solve an anagram
+* puzzle2 - where a player must answer riddles
+* puzzle3 - where a player must find a way across a chasm
+* puzzle4 - where a player must choose their fate.
 '''
 
 from text_adventure.commands import (
     AddActionToInventoryItem,
     AddInventoryItemtoHolder,
     AddLinkToLocation,
-    AppendToCurrentRoomDescription,
     AppendToRoomDescription,
     ChangeLocationDescription,
     ClearInventoryItemActions,
-    NullAction,
+    NullCommand,
     PlayerDeath,
     QuitGame,
     RemoveInventoryItem,
@@ -34,6 +47,7 @@ from text_adventure.actions import (
     RoomSpecificInventoryItemAction
 )
 
+# Constants ##################################################################
 START_INDEX = 0
 GAME_NAME = 'Mini Knightmare'
 OPENING_DESC = "[yellow]Welcome watcher of illusion to the " \
@@ -42,8 +56,13 @@ OPENING_DESC = "[yellow]Welcome watcher of illusion to the " \
     + " the dungeon of deceit which I alone have mastered. " \
     + " But you who have crossed time must master it also..." \
     + "\n\nEnter stranger... [/yellow]"
+SPELLCASTING = 'spellcasting'
+ANSWER = 'answer'
+ENTER = 'enter'
+TOUCH = 'touch'
 
 
+# Procedures to create game logic ############################################
 def load_adventure():
     '''
     Return a mini knightmare text world adventure.
@@ -330,7 +349,15 @@ def create_puzzle2_inventory():
     olgarth2b.add_alias("carving")
     return olgarth, olgarth2a, olgarth2b
 
+
 def create_puzzle_3_inventory():
+    '''
+    Puzzle 3 inventory. Lilith.
+
+    Returns:
+    -------
+    InventoryItem (lilith)
+    '''
     lilith = InventoryItem("Lilith", fixed=True, background=True)
     lilith.long_description = "A mysterious figure in a dark hood."
     lilith.add_alias('lilith')
@@ -353,16 +380,16 @@ def setup_adventure(rooms_collection):
                           use_aliases='classic')
 
     # add additional alisas for the word 'use' - classic knightmare spellcast
-    adventure.add_use_command_alias('spellcasting')
+    adventure.add_use_command_alias(SPELLCASTING)
 
     # enter portal
-    adventure.add_use_command_alias('enter')
+    adventure.add_use_command_alias(ENTER)
 
     # touch letters
-    adventure.add_use_command_alias('touch')
+    adventure.add_use_command_alias(TOUCH)
 
     # answer riddles or choices
-    adventure.add_use_command_alias('answer')
+    adventure.add_use_command_alias(ANSWER)
 
     # Adventure opening line.
     adventure.opening = OPENING_DESC
@@ -386,7 +413,7 @@ def create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal,
     '''
     # WEAR THE HELMET ########################################################
     remove_helmet = RemoveInventoryItem(adventure, helmet)
-    wear_message = NullAction("You place the Helmet of Justice on your head.")
+    wear_message = NullCommand("You place the Helmet of Justice on your head.")
     remove_closed_portal = RemoveInventoryItem(antechamber, closed_portal)
     add_open_portal = AddInventoryItemtoHolder([open_portal], antechamber)
     wear_cmds = [remove_helmet, wear_message, remove_closed_portal,
@@ -405,20 +432,22 @@ def create_antechamber_actions(antechamber, puzzle1, helmet, closed_portal,
     helmet.add_action(wear_helmet)
 
     # attempt to enter the closed portal
-    failed_entry_msg = NullAction("It is not safe to enter yet.")
+    failed_entry_msg = NullCommand("It is not safe to enter yet.")
     fail_entry = BasicInventoryItemAction(failed_entry_msg,
                                           command_text='enter')
     closed_portal.add_action(fail_entry)
 
     # ENTER the open portal
-    enter_message = NullAction("[red]You step into the bright light of the "
-                               + "portal... \n\n[/ red]")
+    enter_message = NullCommand("[red]You step into the bright light of the "
+                                + "portal...\n\n[/ red]")
     move_room = SetCurrentRoom(adventure, puzzle1)
     enter_action = BasicInventoryItemAction([enter_message, move_room],
                                             command_text='enter')
     open_portal.add_action(enter_action)
 
-def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp, adventure):
+
+def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp,
+                            adventure):
     '''
     TALK TO TREGUARD and CHOOSE a ruby or lamp
     '''
@@ -436,20 +465,20 @@ def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp, advent
         + "Let this lamp light your path in your darkest hour.'" \
         + "[/ italic green]"
 
-    talk_tre = BasicInventoryItemAction(NullAction(TRE_SPEACH),
+    talk_tre = BasicInventoryItemAction(NullCommand(TRE_SPEACH),
                                         command_text="talk")
     treguard.add_action(talk_tre)
 
     # answer treguard lamp or answer tregaurd ruby
     add_ruby = AddInventoryItemtoHolder(ruby, adventure)
-    tre_talk2 = NullAction(CHOOSE_RUBY)
+    tre_talk2 = NullCommand(CHOOSE_RUBY)
     remove_tre = RemoveInventoryItem(antechamber, treguard)
     add_tre2 = AddInventoryItemtoHolder(treguard2, antechamber)
     cmds1 = [add_ruby, tre_talk2, remove_tre, add_tre2]
     ruby_action = BasicInventoryItemAction(cmds1, command_text='answer')
 
     add_lamp = AddInventoryItemtoHolder(lamp, adventure)
-    tre_talk2 = NullAction(CHOOSE_LAMP)
+    tre_talk2 = NullCommand(CHOOSE_LAMP)
     cmds2 = [add_lamp, tre_talk2, remove_tre, add_tre2]
     lamp_action = BasicInventoryItemAction(cmds2, command_text='answer')
 
@@ -461,10 +490,15 @@ def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp, advent
 
     treguard.add_action(tre_choice)
 
-    talk_tre2 = BasicInventoryItemAction(NullAction(TRE2_SPEACH), 'talk')
+    talk_tre2 = BasicInventoryItemAction(NullCommand(TRE2_SPEACH), 'talk')
     treguard2.add_action(talk_tre2)
 
-def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spell, adventure):
+
+def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b,
+                           spell, adventure):
+    '''
+    Answer Olgarth of legends riddles.
+    '''
     CORRECT_ANSWER = "[bold italic red]'Truth accepted'[/ bold italic red]"
     ONE_INCORRECT_ANSWER = 'You do not speak the truth.'
     DEATH_MSG = "[bold red]'I FEED UPON YOU.'[/ bold red]" \
@@ -494,9 +528,9 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spel
         + "help I shall provide.  Fail both and I feed upon you.'" \
         + "[/italic green]"
 
-    ################### OLGARTH: RIDDLE 2 #####################################
+    # OLGARTH: RIDDLE 2 ######################################################
     # response to talk olgarth
-    riddle_text = NullAction(RIDDLE_2)
+    riddle_text = NullCommand(RIDDLE_2)
     talk_olgarth2 = BasicInventoryItemAction(riddle_text, command_text='talk')
     olgarth2a.add_action(talk_olgarth2)
 
@@ -511,8 +545,8 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spel
     # action = remove olgarth, give player spell, show text, link p3
     remove_o2 = RemoveInventoryItem(puzzle2, olgarth2a)
     add_spell = AddInventoryItemtoHolder([spell], adventure)
-    response_txt = NullAction(CORRECT_ANSWER)
-    spell_output = NullAction(SPELL_MSG)
+    response_txt = NullCommand(CORRECT_ANSWER)
+    spell_output = NullCommand(SPELL_MSG)
     correct_action = BasicInventoryItemAction([remove_o2, add_spell,
                                                response_txt,
                                                spell_output,
@@ -521,7 +555,7 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spel
 
     # 2a INCORRECT answer.
     # remove olgarth, show text, link p3, add link as txt
-    incorrect_txt = NullAction(ONE_INCORRECT_ANSWER)
+    incorrect_txt = NullCommand(ONE_INCORRECT_ANSWER)
     incorrect_action = \
         BasicInventoryItemAction([incorrect_txt, link_puz3, extra_desc],
                                  'answer')
@@ -531,9 +565,7 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spel
                                                 command_text='answer')
     olgarth2a.add_action(olgarth_qa)
 
-    ################### OLGARTH ACTIONS - AFTER 1 INCORRECT ANSWER ####################
-    # olgarth2b
-
+    # OLGARTH ACTIONS - AFTER 1 INCORRECT ANSWER #############################
     # add riddle - command word 'talk'
     olgarth2b.add_action(talk_olgarth2)
 
@@ -553,20 +585,20 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spel
                                                 command_text='answer')
     olgarth2b.add_action(olgarth_qa)
 
-    ####################### OLGARTH RIDDLE 1 ACTIONS ###############################
-    olgarth_response = NullAction(OLGARTH_INTRO + RIDDLE_1)
+    # OLGARTH RIDDLE 1 ACTIONS ###############################################
+    olgarth_response = NullCommand(OLGARTH_INTRO + RIDDLE_1)
     talk_olgarth = BasicInventoryItemAction(olgarth_response,
                                             command_text='talk')
     olgarth.add_action(talk_olgarth)
 
     remove_o1 = RemoveInventoryItem(puzzle2, olgarth)
     add_o2a = AddInventoryItemtoHolder([olgarth2a], puzzle2)
-    output = NullAction(CORRECT_ANSWER)
+    output = NullCommand(CORRECT_ANSWER)
     correct_action = BasicInventoryItemAction([remove_o1, add_o2a, output],
                                               'answer')
 
     add_o2b = AddInventoryItemtoHolder([olgarth2b], puzzle2)
-    output = NullAction(ONE_INCORRECT_ANSWER)
+    output = NullCommand(ONE_INCORRECT_ANSWER)
     incorrect_action = \
         BasicInventoryItemAction([remove_o1, add_o2b, output], 'answer')
     olgarth_qa = ConditionalInventoryItemAction(ANSWER_1,
@@ -575,12 +607,15 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b, spel
                                                 command_text='answer')
     olgarth.add_action(olgarth_qa)
 
-def create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e, letter_n):
-    ############ PUZZLE 1: touch letters in correct order ##################Ç
-    # manage response when letters touched out of order
 
-    wrong_order = BasicInventoryItemAction(NullAction("Nothing happens."),
-                                        command_text="touch")
+def create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e,
+                           letter_n):
+    '''
+    PUZZLE 1: touch letters in correct order
+    and manage response when letters touched out of order
+    '''
+    wrong_order = BasicInventoryItemAction(NullCommand("Nothing happens."),
+                                           command_text="touch")
     letter_p.add_action(wrong_order)
     letter_e.add_action(wrong_order)
     letter_n.add_action(wrong_order)
@@ -629,7 +664,12 @@ def create_puzzle1_actions(puzzle1, puzzle2, letter_o, letter_p, letter_e, lette
     # only the first letter has its action added on load...
     letter_o.add_action(letter_o_action)
 
+
 def create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure):
+    '''
+    Puzzle 3: Lilith and the Chasm
+    Either use B.R.I.D.G.E spell or give ruby to Lilith to cross the chasm.
+    '''
     LIL_SPEAK = "[italic yellow] 'No master, but a mistress rules here. " \
         + "I am called Lilith and this is my domain. " \
         + "The only way beyond is through the serpent's mouth." \
@@ -649,13 +689,13 @@ def create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure):
         + "  in the shape of a serpent's head."
     NO_RUBY = "Its probably best not to offer her something you don't have."
     NO_SPELL = "you don't have a spell"
-    # talk to lilith
-    talk_lil = BasicInventoryItemAction(NullAction(LIL_SPEAK),
+    # Talk to lilith #########################################################
+    talk_lil = BasicInventoryItemAction(NullCommand(LIL_SPEAK),
                                         command_text="talk")
     lilith.add_action(talk_lil)
 
-    # SPELLCASTING
-    spellcast_cmd = NullAction(SPELLCAST)
+    # SPELLCASTING ###########################################################
+    spellcast_cmd = NullCommand(SPELLCAST)
     remove_spell = RemoveInventoryItem(adventure, spell)
     remove_lil = RemoveInventoryItem(puzzle3, lilith)
     add_tunnel = AddLinkToLocation(puzzle3, puzzle4, 'n')
@@ -674,10 +714,9 @@ def create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure):
 
     spell.add_action(spell_p3_action)
 
-
-    # Give ruby to lilith
+    # Give ruby to lilith ####################################################
     remove_ruby = RemoveInventoryItem(adventure, ruby)
-    lil_give_txt = NullAction(LIL_ACCEPT)
+    lil_give_txt = NullCommand(LIL_ACCEPT)
     cmds = [remove_ruby, remove_lil, lil_give_txt, add_tunnel, new_desc]
     reqs = [ruby]
     ruby_action = RestrictedInventoryItemAction(adventure, cmds, reqs,
