@@ -35,7 +35,7 @@ from text_adventure.commands import (
     SetCurrentRoom
 )
 from text_adventure.constants import (
-    DEFAULT_CMD_WORDS,
+    DEFAULT_VERBS,
     EAST, GIVE, NORTH, SOUTH, WEST)
 
 from text_adventure.world import TextWorld, Room, InventoryItem
@@ -369,14 +369,14 @@ def setup_adventure(rooms_collection):
     '''
     create adventure object and setup command interface.
     '''
-    # customise the command word set
-    knightmare_cmd_mapping = DEFAULT_CMD_WORDS
+    # customise the command verb set
+    knightmare_verb_mapping = DEFAULT_VERBS
     # = ['look', 'inv', 'get', 'drop', 'ex', 'quit']
 
     # create the game room
     adventure = TextWorld(name=GAME_NAME, rooms=rooms_collection,
                           start_index=START_INDEX,
-                          command_word_mapping=knightmare_cmd_mapping,
+                          command_verb_mapping=knightmare_verb_mapping,
                           use_aliases='classic')
 
     # add additional alisas for the word 'use' - classic knightmare spellcast

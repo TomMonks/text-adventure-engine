@@ -1,7 +1,7 @@
 '''
-Constants and presets for command words, use aliases and movement commands.
+Constants and presets for command verbs, use aliases and movement commands.
 
-Commands words are:
+Commands verbs are:
 * 'look' (at room),
 * (list) 'inv'(entory held),
 * 'get' (item)
@@ -37,8 +37,8 @@ INVENTORY_COMMAND = "inv"
 QUIT_COMMAND = 'quit'
 
 # basic commands for interaction with TextWorld
-DEFAULT_CMD_WORDS =  [LOOK_COMMAND, INVENTORY_COMMAND, GET_COMMAND,
-                      DROP_COMMAND, EXAMINE_COMMAND, QUIT_COMMAND]
+DEFAULT_VERBS =  [LOOK_COMMAND, INVENTORY_COMMAND, GET_COMMAND,
+                  DROP_COMMAND, EXAMINE_COMMAND, QUIT_COMMAND]
 
 
 

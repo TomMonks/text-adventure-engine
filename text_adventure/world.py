@@ -19,13 +19,11 @@ TextWorld: The main game class.  A player can take actions within a game
 
 from .constants import (
     CLASSIC_USE_ALIASES,
-    DEFAULT_CMD_WORDS,
+    DEFAULT_VERBS,
     DEFAULT_LEGAL_MOVES,
-    DO_NOT_UNDERSTAND,
     WARFARE_USE_ALIASES)
 
 from .commands import (
-    NullAction,
     QuitGame,
     ExamineInventoryItem,
     LookAtRoom,
@@ -297,7 +295,7 @@ class TextWorld(InventoryHolder):
     one or more players.
     '''
     def __init__(self, name, rooms, start_index=0, legal_exits=None,
-                 command_word_mapping=None, use_aliases='classic'):
+                 command_verb_mapping=None, use_aliases='classic'):
         '''
         Constructor method for World
 
@@ -316,15 +314,15 @@ class TextWorld(InventoryHolder):
             List of exits (e.g. directions) that may be presented to a user
             during a game. If None then ['n', 's', 'e', 'w'].
 
-        command_word_mapping: None or List, optional (default=None)
-            List of commands words mapped to game recognised commands.
+        command_verb_mapping: None or List, optional (default=None)
+            List of commands verbs mapped to game recognised verbs.
             Ordering is strict! When None is specified default is
             ['look', 'inventory', 'get', 'drop', 'ex', 'quit']
 
         use_aliases: None, str or List.
             None = the game is set up with no aliases for 'use'
-            'classic' = the game provides a standard set of simple
-            'warfare' = classic use commands + war specific ones.
+            'classic' = the game provides a standard set of simple verb aliases
+            'warfare' = classic use verbs + war specific ones.
 
         '''
         super().__init__()
@@ -341,12 +339,12 @@ class TextWorld(InventoryHolder):
         # self.legal_commands = dict that maps str keywords (e.g. 'look')
         # to functions that create command objects
         # if none then get standard mapping dict
-        if command_word_mapping is None:
-            self.legal_commands = self.get_vanilla_command_word_mapping()
+        if command_verb_mapping is None:
+            self.legal_verbs = self.get_vanilla_command_verb_mapping()
         else:
             # custom word mapping provided
-            self.legal_commands = \
-                    self.custom_command_word_mapping(command_word_mapping)
+            self.legal_verbs = \
+                    self.custom_command_word_mapping(command_verb_mapping)
 
         # aliaises for the use
         if use_aliases is None:
@@ -373,7 +371,7 @@ class TextWorld(InventoryHolder):
         desc = f"TextWorld(name='{self.name}', "
         desc += f'n_rooms={len(self.rooms)}, '
         desc += f'legal_exits={self.legal_exits},\n'
-        desc += f'\tlegal_commands={self.legal_commands},\n'
+        desc += f'\tlegal_commands={self.legal_verbs},\n'
         desc += f'\tcurrent_room={self.current_room})'
         return desc
 
@@ -420,7 +418,7 @@ class TextWorld(InventoryHolder):
 
         # else lookup the function that will create the command.
         try:
-            command_creator = self.legal_commands[parsed_command[0]]
+            command_creator = self.legal_verbs[parsed_command[0]]
         except KeyError:
             # handle command error
             return f"I don't know how to {command}"
@@ -471,12 +469,12 @@ class TextWorld(InventoryHolder):
     def _create_end_game_command(self, *args):
         return QuitGame(self)
 
-    def get_vanilla_command_word_mapping(self):
+    def get_vanilla_command_verb_mapping(self):
         '''
         Returns a dictionary of vanilla (default) command words
         mapped to functions.
         '''
-        return self.custom_command_word_mapping(DEFAULT_CMD_WORDS)
+        return self.custom_command_word_mapping(DEFAULT_VERBS)
 
     def get_vanilla_legal_moves(self):
         return DEFAULT_LEGAL_MOVES
