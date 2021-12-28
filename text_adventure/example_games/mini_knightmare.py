@@ -52,9 +52,9 @@ from text_adventure.actions import (
 START_INDEX = 0
 GAME_NAME = 'Mini Knightmare'
 OPENING_DESC = "[yellow]Welcome watcher of illusion to the " \
-    + " castle of confusion for this is the time of adventure..." \
-    + "\n\nI Treguard issue the challenge.  Beyond this portal lies" \
-    + " the dungeon of deceit which I alone have mastered. " \
+    + "castle of confusion for this is the time of adventure..." \
+    + "\n\nI Treguard issue the challenge. Beyond this portal lies" \
+    + " the Dungeon of Deceit which I alone have mastered. " \
     + " But you who have crossed time must master it also..." \
     + "\n\nEnter stranger... [/yellow]"
 SPELLCASTING = 'spellcasting'
