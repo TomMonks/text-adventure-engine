@@ -36,7 +36,8 @@ from text_adventure.commands import (
 )
 from text_adventure.constants import (
     DEFAULT_VERBS,
-    EAST, GIVE, NORTH, SOUTH, WEST)
+    EAST, GIVE, NORTH,
+    QUIT_COMMAND, SOUTH, WEST)
 
 from text_adventure.world import TextWorld, Room, InventoryItem
 from text_adventure.actions import (
@@ -60,6 +61,7 @@ SPELLCASTING = 'spellcasting'
 ANSWER = 'answer'
 ENTER = 'enter'
 TOUCH = 'touch'
+LIGHT = 'light'
 
 
 # Procedures to create game logic ############################################
@@ -96,30 +98,41 @@ def load_adventure():
 
     puzzle3 = Room(name='chasm')
     puzzle3.description = "You are standing in a large cavern to the south" \
-        + " of a deep chasm.  On the north side the cavern can be exited via" \
+        + " of a deep chasm. On the north side the cavern can be exited via" \
         + " an entrance to a tunnel in the shape of a serpent's head." \
         + " a dark figure stands on the other side of the chasm."
 
-    puzzle4 = Room(name='tunnel')
-    puzzle4.description = "You are standing in a long tunnel." \
+    puzzle4 = Room(name='tunnel')  
+    puzzle4.first_enter_msg = "(Treguard's voice whispers in your ears):" \
+        + " [italic green]'Caution stranger your time in " \
+        + "the dungeon of deceit draws to an end. But danger is still close" \
+        + ". Choose your fate. But choose wisely'[/italic green]"
+    puzzle4.description = "\n\nYou are standing in a long tunnel." \
         + " To the west a door has two crosses engraved above it." \
-        + "  To the east is a door with two upside down crosses engaved" \
-        + " above it.  Another exit leads South."
+        + "  To the east is a door with two upside down crosses engraved" \
+        + " above it. Another exit leads South."
 
     dark_room = Room(name='dark room')
     dark_room.description = "[bold]It is very dark.[/ bold]\n" \
         + "There is a single beam of light penetrating the ceiling" \
-        + " and shining in the centre of the chamber.\n"\
+        + " and shining in the centre of the chamber. "\
         + "You sense an evil presence in this room."
 
-    # links at the start of the game.
-    puzzle2.add_exit(puzzle1, SOUTH)
-    puzzle3.add_exit(puzzle2, EAST)
-    puzzle4.add_exit(puzzle3, SOUTH)
+    light_room = Room(name='light room')
+    light_room.description = "[bold]The room is filled with a pure " \
+        + "almost blinding white light[/ bold]. In the centre of room "\
+        + "the light dims revealing a dark nebulous portal."
 
     # store rooms in a list
     rooms_collection = [antechamber, puzzle1, puzzle2, puzzle3, puzzle4,
-                        dark_room]
+                        dark_room, light_room]
+
+    # link rooms
+    puzzle2.add_exit(puzzle1, SOUTH)
+    puzzle3.add_exit(puzzle2, EAST)
+    puzzle4.add_exit(dark_room, EAST)
+    puzzle4.add_exit(light_room, WEST)
+    puzzle4.add_exit(light_room, SOUTH)
 
     # STEP 2. CREATE INVENTORY ###############################################
     # Create all the inventory to be used in the game.  Not all of it will be
@@ -154,7 +167,12 @@ def load_adventure():
     lilith = create_puzzle_3_inventory()
     puzzle3.add_inventory(lilith)
 
-    # 2.4 MISC Inventory #####################################################
+    # 2.4 Puzzle 4: beam of light and dark portal
+    light_beam, dark_portal = create_puzzle_4_inventory()
+    dark_room.add_inventory(light_beam)
+    light_room.add_inventory(dark_portal)
+
+    # 2.5 MISC Inventory #####################################################
     # spell
     spell, ruby, lamp = create_misc_inventory()
 
@@ -192,7 +210,85 @@ def load_adventure():
     # Give Lilith ruby - she creates bridge.
     create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure)
 
+    # 3.6 PUZZLE 5: Choose your fate.#########################################
+    # If the dungeoneer chooses the dark room they must have the lamp 
+    # The other room is the 'light' room and they suvive no matter what.
+    create_dark_room_actions(dark_room, light_room, light_beam, lamp, 
+                             adventure)
+    create_light_room_actions(dark_portal, adventure)
+    
     return adventure
+
+def create_light_room_actions(dark_portal, adventure):
+    ENTER_PORTAL = 'You step forward into the darkness ...'
+    ENDING = '\n\nYou find yourself once again in a warm antechamber of ' \
+        + 'Castle Knightmare. Treguard stands before you and as he lifts ' \
+        + 'the Helmet of Justice from your head you realise he is smiling.' \
+        + "\n\n[italic green]'Well stranger, you have remained true to your "\
+        + "quest and survived the Dungeon of Deceit. This in itself is your " \
+        + "reward. As for me I have only one remaining task...'" \
+        + "\n\n'Spellcasting D.I.M.I.S.S.' [/ italic green]"
+
+    GAME_OVER_MSG = "Well done adventurer. You have completed Knightmare."
+    end_cmd = QuitGame(adventure, quit_msg=ENTER_PORTAL + ENDING, 
+                       game_over_msg=GAME_OVER_MSG)
+    touch_portal_action = BasicInventoryItemAction(end_cmd, ENTER)
+    dark_portal.add_action(touch_portal_action)
+
+def create_dark_room_actions(dark_room, light_room, light_beam, lamp, adventure):
+    TOUCH_BEAM_MSG = "In the corner of your eye you catch a brief"\
+        + " glimpse of a many legs rushing towards you before a great pain "\
+        + "fills your chest..."
+    TREGUARD_BAD_END = "\n\nAs the final light fades from your eyes you " \
+        + "hear Treguard speak for one last time:\n[italic green]'Oooh "\
+        + "NASTY. I thought the symbol might provide you a clue. " \
+        + "But fear not stranger your time is not"\
+        + " yet at an end. You have many centuries of time to ponder your " \
+        + "mistakes in your after-life service of Shelob...[/ italic green]"
+    LIGHT_LAMP_MSG = "Light from the lamp floods the room and reveals a " \
+        + "monsterous spider like creature looming down on you. Centuries old"\
+        + " eyes peer down at you revealing the beast's hidden thirst, but"\
+        + " the creature cowers away from the light. A solitary exit lies to" \
+        + " the north."
+    TREGUARD_LAMP = "\n\nTreguard speaks: [italic green]'Caution.. you have "\
+        + "entered the domain of Shelob the Enslaver. You were wise to "\
+        + "light your lamp. But do not linger adventurer, make your escape "\
+        + "quickly' [/italic green]"
+
+    # enter light beam
+    player_death = PlayerDeath(TOUCH_BEAM_MSG + TREGUARD_BAD_END,
+                               QuitGame(adventure))
+    death_action = BasicInventoryItemAction(player_death, command_text=ENTER)                           
+    light_beam.add_action(death_action)
+
+    # light lamp
+    remove_lamp = RemoveInventoryItem(adventure, lamp)
+    room_desc = ChangeLocationDescription(dark_room, LIGHT_LAMP_MSG)
+    add_link = AddLinkToLocation(dark_room, light_room, NORTH)
+    tre_warning = NullCommand('\n' + LIGHT_LAMP_MSG + TREGUARD_LAMP)
+    cmds = [remove_lamp, room_desc, add_link, tre_warning]
+    light_action = RestrictedInventoryItemAction(adventure, cmds, [lamp],
+                                                 '', LIGHT)
+    lamp.add_action(light_action)
+
+def create_puzzle_4_inventory():
+    light_beam = InventoryItem('A beam of light', fixed=True, background=True)
+    light_beam.long_description = "A singlular thin beam of light penetrates "\
+        + " the ceiling of the chamber from an unknown source. The beam "\
+        + "illuminates the centre of the room and is just wide enough " \
+        + "to step into"
+    light_beam.add_alias("light")
+    light_beam.add_alias("beam")
+
+    # the dark portal (final item to end the game)
+    dark_portal = InventoryItem('dark portal', fixed=True, background=True)
+    dark_portal.long_description = "Treguard speaks [italic green]'"\
+        + "This portal is the end of your journey adventurer. Don't give up" \
+        + " now; take the final step.' [/italic green]"
+    dark_portal.add_alias('dark')
+    dark_portal.add_alias('portal')
+
+    return light_beam, dark_portal
 
 
 def create_misc_inventory():
@@ -212,9 +308,8 @@ def create_misc_inventory():
 
     # lamp
     lamp = InventoryItem('lamp')
-    lamp.long_description = 'The lamp has two crosses engraved on it." \
-        + " It might come in useful!'
-    lamp.add_alias('light')
+    lamp.long_description = "The lamp has two crosses engraved on it." \
+        + " It might come in useful!"
     lamp.add_alias('lamp')
 
     return spell, ruby, lamp
@@ -384,6 +479,9 @@ def setup_adventure(rooms_collection):
                           command_verb_mapping=knightmare_verb_mapping,
                           use_aliases='classic')
 
+    # custom game over message
+    adventure.game_over_message = 'Your adventure ends here stranger.'
+
     # add additional alisas for the word 'use' - classic knightmare spellcast
     adventure.add_use_command_alias(SPELLCASTING)
 
@@ -395,6 +493,9 @@ def setup_adventure(rooms_collection):
 
     # answer riddles or choices
     adventure.add_use_command_alias(ANSWER)
+
+    # light lamp
+    adventure.add_use_command_alias(LIGHT)
 
     # Adventure opening line.
     adventure.opening = OPENING_DESC
@@ -463,11 +564,11 @@ def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp,
     TRE_UNIMPRESSED = 'Treguard looks unimpressed with your choice.'
     CHOOSE_RUBY = "Treguard hands you a ruby." \
         + "[italic green]\n'A rare and precious gem." \
-        + "Let us hope its value is of value in the dungeon'" \
+        + " Let us hope its value is of value in the dungeon'" \
         + "[/ italic green]"
     CHOOSE_LAMP = "Treguard hands you a lamp." \
         + "[italic green]\n'The dungeon is a dark place" \
-        + "Let this lamp light your path in your darkest hour.'" \
+        + " Let this lamp light your path in your darkest hour.'" \
         + "[/ italic green]"
 
     talk_tre = BasicInventoryItemAction(NullCommand(TRE_SPEACH),
@@ -526,11 +627,11 @@ def create_puzzle2_actions(puzzle2, puzzle3, olgarth, olgarth2a, olgarth2b,
         + " I endured. then came a prince who pulled it forth.  " \
         + " Name him now and gain reward.'[/ italic yellow]"
 
-    OLGARTH_INTRO = "[italic green] 'I am Olgarth of legend. " \
+    OLGARTH_INTRO = "[italic green]'I am Olgarth of legend. " \
         + " I have riddles of different times of different legends." \
         + " Two riddles I have and seek answers. Answer one correctly" \
         + " and the way ahead is opened.  Answer two correctly and" \
-        + "help I shall provide.  Fail both and I feed upon you.'" \
+        + " help I shall provide. Fail both and I feed upon you.'" \
         + "[/italic green]"
 
     # OLGARTH: RIDDLE 2 ######################################################
@@ -675,7 +776,7 @@ def create_puzzle3_actions(puzzle3, puzzle4, lilith, spell, ruby, adventure):
     Puzzle 3: Lilith and the Chasm
     Either use B.R.I.D.G.E spell or give ruby to Lilith to cross the chasm.
     '''
-    LIL_SPEAK = "[italic yellow] 'No master, but a mistress rules here. " \
+    LIL_SPEAK = "[italic yellow]'No master, but a mistress rules here. " \
         + "I am called Lilith and this is my domain. " \
         + "The only way beyond is through the serpent's mouth." \
         + "You must leave. Kindly use the alternative exit. " \

@@ -24,6 +24,7 @@ from .constants import (
     WARFARE_USE_ALIASES)
 
 from .commands import (
+    NullCommand,
     QuitGame,
     ExamineInventoryItem,
     LookAtRoom,
@@ -220,10 +221,16 @@ class Room(InventoryHolder):
 
     A `Room` is-a type of `InventoryHolder`
     '''
-    def __init__(self, name):
+    def __init__(self, name, first_enter_msg=''):
         self.name = name
         self.description = ""
         self.exits = {}
+
+        # has the room already been visited?
+        self.visited = False
+
+        # additional message on first entry
+        self.first_enter_msg = first_enter_msg
 
         super().__init__()
 
@@ -277,6 +284,10 @@ class Room(InventoryHolder):
 
     def describe(self):
         msg = self.description
+        if not self.visited :
+            msg = self.first_enter_msg + msg
+            self.visited = True
+
         if len(self.inventory) > 0:
             inv_msg = "\n"
             inv_msg += self.list_inventory()
@@ -364,6 +375,9 @@ class TextWorld(InventoryHolder):
         # true while the game is active.
         self.active = True
 
+        # game over message
+        self.game_over_message = 'Game over.'
+
     def __repr__(self):
         '''
         String representation of the class
@@ -412,7 +426,7 @@ class TextWorld(InventoryHolder):
                                        command_text=parsed_command[0],
                                        parsed_command=parsed_command)
             except IndexError:
-                cmd = NullAction(f"{parsed_command[0]} what?")
+                cmd = NullCommand(f"{parsed_command[0]} what?")
             finally:
                 return cmd.execute()
 
@@ -431,7 +445,7 @@ class TextWorld(InventoryHolder):
             item_name = args[0][1]
             return ExamineInventoryItem(self, self.current_room, item_name)
         except IndexError:
-            return NullAction("What would you like to examine?")
+            return NullCommand("What would you like to examine?")
 
     def _create_move_room_command(self, *args):
         direction = args[0]
@@ -445,7 +459,7 @@ class TextWorld(InventoryHolder):
             item_name = args[0][1]
             return TransferInventory(self.current_room, self, item_name)
         except IndexError:
-            return NullAction("What would you like to pickup?")
+            return NullCommand("What would you like to pickup?")
 
     def _create_transfer_to_room_command(self, *args):
         '''
@@ -455,7 +469,7 @@ class TextWorld(InventoryHolder):
             item_name = args[0][1]
             return TransferInventory(self, self.current_room, item_name)
         except IndexError:
-            return NullAction("What would you like to drop?")
+            return NullCommand("What would you like to drop?")
 
     def _create_player_inventory_command(self, *args):
         return ViewPlayerInventory(self)

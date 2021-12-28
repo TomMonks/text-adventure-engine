@@ -192,15 +192,19 @@ class QuitGame(Command):
     '''
     Player will quit the game
     '''
-    def __init__(self, game, quit_msg=None):
+    def __init__(self, game, quit_msg=None, game_over_msg=None):
         self.game = game
         if quit_msg is None:
             self.quit_msg = "[bold red]You have quit the game.[/bold red]"
         else:
             self.quit_msg = quit_msg
 
+        self.game_over_msg = game_over_msg
+
     def execute(self):
         self.game.active = False
+        if self.game_over_msg is not None:
+            self.game.game_over_message = self.game_over_msg
         return self.quit_msg
 
 
