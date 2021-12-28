@@ -16,11 +16,10 @@ super class.
 from abc import ABC, abstractmethod
 
 ################# CONSTANTS ###################################################
-COMMAND_ERROR = "You cannot do that.";
+COMMAND_ERROR = "You cannot do that."
 
 
 ##################### BASE CLASSES ############################################
-
 
 class InventoryItemAction(ABC):
     '''
@@ -31,7 +30,7 @@ class InventoryItemAction(ABC):
         pass
 
     @abstractmethod
-    def try_to_execute(current_room, command_text):
+    def try_to_execute(command_text, *args):
         pass
 
 
@@ -72,7 +71,7 @@ class BasicInventoryItemAction(InventoryItemAction):
         '''
         self.commands.append(command)
 
-    def try_to_execute(self, current_room, command_text):
+    def try_to_execute(self, command_text, **kwargs):
         '''
         Attempt to execute the command using command text.
 
@@ -150,7 +149,7 @@ class RestrictedInventoryItemAction(InventoryItemAction):
         '''
         self.commands.append(command)
 
-    def try_to_execute(self, current_room, command_text):
+    def try_to_execute(self, command_text, **kwargs):
 
         # if correct command issed to trigger action.
         if self.command_text != command_text:
@@ -170,6 +169,90 @@ class RestrictedInventoryItemAction(InventoryItemAction):
         return self.holder.in_inventory(self.requirements)
 
 
+class ChoiceInventoryItemAction(InventoryItemAction):
+    '''
+    Provides a player with a choice between actions based
+    on their answer...
+    '''
+    def __init__(self, choices, command_text='use',
+                 invalid_choice="You can't do that."):
+        '''
+        Provides a player with a choice between two actions.
+
+        Params:
+        -------
+        choices: dict
+            dictionary of str keys representing choices.
+            values are InventoryItemActions
+
+        command_text: str, optional (default='use')
+        '''
+        self.choices = choices
+        self.command_text = command_text
+        self.invalid_choice = invalid_choice
+
+    def add_command(self, command):
+        '''
+        Adds to each command in the choices dict.
+        '''
+        for action in self.choices.values():
+            action.add_command(command)
+
+    def try_to_execute(self, command_text, **kwargs):
+        '''
+        Attempt to execute chosen action.  Invalid actions
+        are handled.
+        '''
+        parsed_command = kwargs['parsed_command']
+        if len(parsed_command) < 3:
+            return self.command_text + ' ' + parsed_command[1] + ' what?'
+        else:
+            answer = parsed_command[2]
+            try:
+                chosen_action = self.choices[answer]
+                return chosen_action.try_to_execute(command_text,
+                                                    **kwargs)
+            except KeyError:
+                return self.invalid_choice
+
+
+class ConditionalInventoryItemAction(InventoryItemAction):
+    '''
+    Simple if-else conditional action.
+    If answer is correct then attempt action a
+    Else attempt action y.
+    '''
+    def __init__(self, correct_answer, action_correct, action_incorrect,
+                 command_text='use'):
+        self.correct_answer = correct_answer
+        self.action_correct = action_correct
+        self.action_incorrect = action_incorrect
+        self.command_text = command_text
+
+    def add_command(self, command):
+        '''
+        Add a new command to the action.  Last in last out.
+        Note this is added to the correct action only!
+
+        Params:
+        ------
+        command: Command
+        '''
+        self.action_correct.add_command(command)
+
+    def try_to_execute(self, command_text, **kwargs):
+        parsed_command = kwargs['parsed_command']
+        if len(parsed_command) < 3:
+            return self.command_text + ' ' + parsed_command[1] + ' what?'
+        else:
+            answer = parsed_command[2]
+            if answer == self.correct_answer:
+                return self.action_correct.try_to_execute(command_text,
+                                                          **kwargs)
+            else:
+                return self.action_incorrect.try_to_execute(command_text,
+                                                            **kwargs)
+
 ########################### Untested code #############################
 
 
@@ -177,12 +260,16 @@ class RoomSpecificInventoryItemAction(InventoryItemAction):
     '''
     Action with item will only work in specific room
     '''
-    def __init__(self, game, context, action):
+    def __init__(self, game, context, action, command_text='use'):
         self.game = game
         self.context = context
-        self.actiom = action
+        self.action = action
+        self.command_text = command_text
 
-    def try_to_execute(self, command_text):
+    def add_command():
+        pass
+
+    def try_to_execute(self, command_text, **kwargs):
         msg = ''
         if self.game.current_room == self.context:
             msg = self.action.try_to_execute(command_text)

@@ -1,9 +1,9 @@
 '''
-Constants and presets for command words, use aliases and movement commands.
+Constants and presets for command verbs, use aliases and movement commands.
 
-Commands words are:
-* 'look' (at room), 
-* (list) 'inv'(entory held), 
+Commands verbs are:
+* 'look' (at room),
+* (list) 'inv'(entory held),
 * 'get' (item)
 * 'drop' (item)
 * 'ex'(amine) item
@@ -29,16 +29,16 @@ DEFAULT_LEGAL_MOVES = [NORTH, SOUTH, EAST, WEST, UP, DOWN]
 
 
 ########################## COMMAND WORDS ######################################
-GET_COMMAND = "get";
-EXAMINE_COMMAND = "ex";
-DROP_COMMAND = "drop";
-LOOK_COMMAND = "look";
-INVENTORY_COMMAND = "inv";
+GET_COMMAND = "get"
+EXAMINE_COMMAND = "ex"
+DROP_COMMAND = "drop"
+LOOK_COMMAND = "look"
+INVENTORY_COMMAND = "inv"
 QUIT_COMMAND = 'quit'
 
 # basic commands for interaction with TextWorld
-DEFAULT_CMD_WORDS =  [LOOK_COMMAND, INVENTORY_COMMAND, GET_COMMAND, 
-                      DROP_COMMAND, EXAMINE_COMMAND, QUIT_COMMAND]
+DEFAULT_VERBS =  [LOOK_COMMAND, INVENTORY_COMMAND, GET_COMMAND,
+                  DROP_COMMAND, EXAMINE_COMMAND, QUIT_COMMAND]
 
 
 
@@ -53,6 +53,9 @@ DIG = 'dig'
 TALK = 'talk'
 THROW = 'throw'
 READ = 'read'
+SAY = 'say'
+WEAR = 'wear'
+GIVE = 'give'
 
 
 SHOOT = 'shoot'
@@ -64,7 +67,7 @@ EXPLODE = 'explode'
 
 
 # classic use alias pack
-CLASSIC_USE_ALIASES = [USE, 
+CLASSIC_USE_ALIASES = [USE,
                        EAT,
                        OPEN,
                        CLOSE,
@@ -73,7 +76,10 @@ CLASSIC_USE_ALIASES = [USE,
                        DIG,
                        TALK,
                        THROW,
-                       READ]
+                       READ,
+                       SAY,
+                       WEAR,
+                       GIVE]
 
 # warfare pack
 WARFARE_USE_ALIASES = CLASSIC_USE_ALIASES \
@@ -84,6 +90,5 @@ WARFARE_USE_ALIASES = CLASSIC_USE_ALIASES \
                            PUNCH,
                            EXPLODE]
 
-
-
-
+####################### UTILITY CONSTANTS #####################################
+DO_NOT_UNDERSTAND = "I don't understand."

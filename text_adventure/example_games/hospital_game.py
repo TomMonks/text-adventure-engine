@@ -10,7 +10,7 @@ from text_adventure.commands import (
     RemoveInventoryItem,
     RemoveInventoryItemFromPlayerOrRoom
 )
-from text_adventure.constants import DEFAULT_CMD_WORDS
+from text_adventure.constants import DEFAULT_VERBS
 
 from text_adventure.world import TextWorld, Room, InventoryItem
 from text_adventure.actions import (
@@ -86,7 +86,7 @@ def load_adventure():
 
     
     # customise the command word set
-    hospital_cmd_mapping = DEFAULT_CMD_WORDS
+    hospital_cmd_mapping = DEFAULT_VERBS
     # = ['look', 'inv', 'get', 'drop', 'ex', 'quit']
     # modification = we type 'exit' instead of 'quit' to terminate game.
     hospital_cmd_mapping[-1] = 'exit'

@@ -19,11 +19,12 @@ TextWorld: The main game class.  A player can take actions within a game
 
 from .constants import (
     CLASSIC_USE_ALIASES,
-    DEFAULT_CMD_WORDS,
+    DEFAULT_VERBS,
     DEFAULT_LEGAL_MOVES,
     WARFARE_USE_ALIASES)
 
 from .commands import (
+    NullCommand,
     QuitGame,
     ExamineInventoryItem,
     LookAtRoom,
@@ -40,7 +41,7 @@ class InventoryItem:
     An item found in a text adventure world that can be picked up
     or dropped.
     '''
-    def __init__(self, short_description, fixed=False):
+    def __init__(self, short_description, fixed=False, background=False):
         '''
         Construct an InventoryItem
 
@@ -51,10 +52,15 @@ class InventoryItem:
 
         fixed: bool, optional (default=False)
             Can the item be picked up or is it fixed in place in the room?
+
+        background: bool, optional (default=False)
+            Is this a background item that is hidden from the
+            "you can also see" section in the game?
         '''
         self.name = short_description
         self.long_description = ''
         self.fixed = fixed
+        self.background = background
         self.aliases = []
         self.actions = []
 
@@ -104,6 +110,13 @@ class InventoryHolder:
     This simulates "picking up" and "dropping" items in a TextWorld
     '''
     def __init__(self):
+        '''
+        Params:
+        ------
+        capacity: str or int, optional (default='inf')
+            specify a capacity for the holder.
+            'inf'=infinite
+        '''
         # inventory just held in a list interally
         self.inventory = []
 
@@ -117,7 +130,8 @@ class InventoryHolder:
         '''
         msg = ''
         for item in self.inventory:
-            msg += f'{item.name}\n'
+            if item.background is False:
+                msg += f'{item.name}\n'
 
         return msg
 
@@ -148,7 +162,7 @@ class InventoryHolder:
         '''
         selected_item, selected_index = self.find_inventory(item_name)
 
-        # remove at index and return
+        # remove at index and return (potential bug to delete -1 if none found)
         del self.inventory[selected_index]
         return selected_item
 
@@ -156,6 +170,8 @@ class InventoryHolder:
         '''
         Find an inventory item and return it and its index
         in the collection.
+
+        This is a bit clumsy.  Needs improving...
         '''
         selected_item = None
         selected_index = -1
@@ -205,10 +221,16 @@ class Room(InventoryHolder):
 
     A `Room` is-a type of `InventoryHolder`
     '''
-    def __init__(self, name):
+    def __init__(self, name, first_enter_msg=''):
         self.name = name
         self.description = ""
         self.exits = {}
+
+        # has the room already been visited?
+        self.visited = False
+
+        # additional message on first entry
+        self.first_enter_msg = first_enter_msg
 
         super().__init__()
 
@@ -262,11 +284,17 @@ class Room(InventoryHolder):
 
     def describe(self):
         msg = self.description
-        if len(self.inventory) > 0:
-            msg += '\nYou can also see:\n'
-            msg += self.list_inventory()
-        return msg
+        if not self.visited :
+            msg = self.first_enter_msg + msg
+            self.visited = True
 
+        if len(self.inventory) > 0:
+            inv_msg = "\n"
+            inv_msg += self.list_inventory()
+            if inv_msg != "\n":
+                msg += '\nYou can also see:\n' + inv_msg
+
+        return msg
 
 
 class TextWorld(InventoryHolder):
@@ -278,7 +306,7 @@ class TextWorld(InventoryHolder):
     one or more players.
     '''
     def __init__(self, name, rooms, start_index=0, legal_exits=None,
-                 command_word_mapping=None, use_aliases='classic'):
+                 command_verb_mapping=None, use_aliases='classic'):
         '''
         Constructor method for World
 
@@ -297,15 +325,15 @@ class TextWorld(InventoryHolder):
             List of exits (e.g. directions) that may be presented to a user
             during a game. If None then ['n', 's', 'e', 'w'].
 
-        command_word_mapping: None or List, optional (default=None)
-            List of commands words mapped to game recognised commands.
+        command_verb_mapping: None or List, optional (default=None)
+            List of commands verbs mapped to game recognised verbs.
             Ordering is strict! When None is specified default is
             ['look', 'inventory', 'get', 'drop', 'ex', 'quit']
 
         use_aliases: None, str or List.
             None = the game is set up with no aliases for 'use'
-            'classic' = the game provides a standard set of simple
-            'warfare' = classic use commands + war specific ones.
+            'classic' = the game provides a standard set of simple verb aliases
+            'warfare' = classic use verbs + war specific ones.
 
         '''
         super().__init__()
@@ -322,12 +350,12 @@ class TextWorld(InventoryHolder):
         # self.legal_commands = dict that maps str keywords (e.g. 'look')
         # to functions that create command objects
         # if none then get standard mapping dict
-        if command_word_mapping is None:
-            self.legal_commands = self.get_vanilla_command_word_mapping()
+        if command_verb_mapping is None:
+            self.legal_verbs = self.get_vanilla_command_verb_mapping()
         else:
             # custom word mapping provided
-            self.legal_commands = \
-                    self.custom_command_word_mapping(command_word_mapping)
+            self.legal_verbs = \
+                    self.custom_command_word_mapping(command_verb_mapping)
 
         # aliaises for the use
         if use_aliases is None:
@@ -347,6 +375,8 @@ class TextWorld(InventoryHolder):
         # true while the game is active.
         self.active = True
 
+        # game over message
+        self.game_over_message = 'Game over.'
 
     def __repr__(self):
         '''
@@ -355,10 +385,9 @@ class TextWorld(InventoryHolder):
         desc = f"TextWorld(name='{self.name}', "
         desc += f'n_rooms={len(self.rooms)}, '
         desc += f'legal_exits={self.legal_exits},\n'
-        desc += f'\tlegal_commands={self.legal_commands},\n'
+        desc += f'\tlegal_commands={self.legal_verbs},\n'
         desc += f'\tcurrent_room={self.current_room})'
         return desc
-
 
     def add_use_command_alias(self, alias):
         '''
@@ -388,18 +417,22 @@ class TextWorld(InventoryHolder):
             return cmd.execute()
 
         # split user input into list
-        parsed_command = command.split()
-        parsed_command[0] == parsed_command[0].lower()
+        parsed_command = command.lower().split()
 
         # if attempting to use an item.
         if parsed_command[0] in self.use_aliases:
-            cmd = UseInventoryItem(self, parsed_command[1],
-                                          parsed_command[0])
-            return cmd.execute()
+            try:
+                cmd = UseInventoryItem(self, item_alias=parsed_command[1],
+                                       command_text=parsed_command[0],
+                                       parsed_command=parsed_command)
+            except IndexError:
+                cmd = NullCommand(f"{parsed_command[0]} what?")
+            finally:
+                return cmd.execute()
 
         # else lookup the function that will create the command.
         try:
-            command_creator = self.legal_commands[parsed_command[0]]
+            command_creator = self.legal_verbs[parsed_command[0]]
         except KeyError:
             # handle command error
             return f"I don't know how to {command}"
@@ -408,8 +441,11 @@ class TextWorld(InventoryHolder):
         return cmd.execute()
 
     def _create_examine_command(self, *args):
-        item_name = args[0][1]
-        return ExamineInventoryItem(self, self.current_room, item_name)
+        try:
+            item_name = args[0][1]
+            return ExamineInventoryItem(self, self.current_room, item_name)
+        except IndexError:
+            return NullCommand("What would you like to examine?")
 
     def _create_move_room_command(self, *args):
         direction = args[0]
@@ -419,15 +455,21 @@ class TextWorld(InventoryHolder):
         '''
         Pickup command
         '''
-        item_name = args[0][1]
-        return TransferInventory(self.current_room, self, item_name)
+        try:
+            item_name = args[0][1]
+            return TransferInventory(self.current_room, self, item_name)
+        except IndexError:
+            return NullCommand("What would you like to pickup?")
 
     def _create_transfer_to_room_command(self, *args):
         '''
         Drop command
         '''
-        item_name = args[0][1]
-        return TransferInventory(self, self.current_room, item_name)
+        try:
+            item_name = args[0][1]
+            return TransferInventory(self, self.current_room, item_name)
+        except IndexError:
+            return NullCommand("What would you like to drop?")
 
     def _create_player_inventory_command(self, *args):
         return ViewPlayerInventory(self)
@@ -441,12 +483,12 @@ class TextWorld(InventoryHolder):
     def _create_end_game_command(self, *args):
         return QuitGame(self)
 
-    def get_vanilla_command_word_mapping(self):
+    def get_vanilla_command_verb_mapping(self):
         '''
         Returns a dictionary of vanilla (default) command words
         mapped to functions.
         '''
-        return self.custom_command_word_mapping(DEFAULT_CMD_WORDS)
+        return self.custom_command_word_mapping(DEFAULT_VERBS)
 
     def get_vanilla_legal_moves(self):
         return DEFAULT_LEGAL_MOVES
@@ -466,11 +508,3 @@ class TextWorld(InventoryHolder):
         for user_cmd, mapped_cmd in zip(command_words, command_funcs):
             custom_commands[user_cmd] = mapped_cmd
         return custom_commands
-
-
-
-
-
-
-
-
