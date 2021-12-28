@@ -67,6 +67,11 @@ def load_adventure():
     '''
     Return a mini knightmare text world adventure.
 
+    Returns:
+    -------
+    TextWorld
+        The adventure to play.
+
     '''
     # STEP 1: CREATE ROOMS AND LINKS #########################################
 
@@ -75,9 +80,9 @@ def load_adventure():
     # start fo the game = antechamber within Castle Knightmare
     antechamber = Room(name="Throne room")
     antechamber.description = "You are stood in an antechamber within Castle" \
-        + " Knightmare. Candles scattered around the room dull light" \
-        + " and a large fireplace beings warmth. Treguard sits in a great" \
-        + "chair. In the corner of the room is a portal."
+        + " Knightmare. Candles scattered around the casts a room dull light" \
+        + ", and a large fireplace brings warmth. [green]Treguard[/ green]" \
+        + " sits in a great chair. In the corner of the room is a portal."
 
     puzzle1 = Room(name='puzzle1')
     puzzle1.description = """You are in a brightly lit room. There is a door to
@@ -453,7 +458,7 @@ def create_treguard_actions(antechamber, treguard, treguard2, ruby, lamp,
     '''
     TRE_SPEACH = "[italic green]'Welcome stranger...To help you on " \
         + "your quest I can offer you a precious 'ruby' or the 'lamp of the" \
-        + " cross'\nAnswer me...which do you choose?'[/ italic green]"
+        + " cross' \nAnswer me...which do you choose?'[/ italic green]"
     TRE2_SPEACH = "[italic green]'The dungeon awaits you.'[/ italic green]"
     TRE_UNIMPRESSED = 'Treguard looks unimpressed with your choice.'
     CHOOSE_RUBY = "Treguard hands you a ruby." \

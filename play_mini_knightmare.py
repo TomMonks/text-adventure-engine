@@ -12,6 +12,8 @@ def show_game_opening(adventure):
     terminal_width = os.get_terminal_size()[0]
     print('*' * terminal_width)
     print(adventure.opening, end='\n\n')
+    adventure.player_name = input("What is your name stranger? >> ")
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(adventure.current_room.describe())
 
 
@@ -24,7 +26,7 @@ def play_text_adventure(adventure):
         user_input = input("\nWhat do you want to do? >>> ")
         response = adventure.take_action(user_input)
         print(response)
-    print('Your adventure ends here.')
+    print(f'Your adventure ends here {adventure.player_name}.')
 
 
 if __name__ == '__main__':
