@@ -56,6 +56,7 @@ READ = 'read'
 SAY = 'say'
 WEAR = 'wear'
 GIVE = 'give'
+TOUCH = 'touch'
 
 
 SHOOT = 'shoot'
@@ -79,7 +80,8 @@ CLASSIC_USE_ALIASES = [USE,
                        READ,
                        SAY,
                        WEAR,
-                       GIVE]
+                       GIVE,
+                       TOUCH]
 
 # warfare pack
 WARFARE_USE_ALIASES = CLASSIC_USE_ALIASES \
