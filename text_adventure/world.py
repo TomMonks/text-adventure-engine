@@ -419,6 +419,11 @@ class TextWorld(InventoryHolder):
         # split user input into list
         parsed_command = command.lower().split()
 
+        # Additional safety check after parsing
+        # added by TM to handle an empty prompt and return.
+        if not parsed_command:
+            return NullCommand("Please enter a command.").execute()
+
         # if attempting to use an item.
         if parsed_command[0] in self.use_aliases:
             try:
